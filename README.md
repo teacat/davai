@@ -110,8 +110,7 @@ func main() {
 | -- | -- | -- | -- |
 | * | .+? | 任何東西。 | `/post/{*:title}` |
 | i | [0-9]++ | 僅數字。 | `/user/{i:userId}` |
-| a | [0-9A-Za-z]++ | 數字和大小寫英文字母。 | `/profile/{a:username}` |
-| h | [0-9A-Fa-f]++ | 僅十六進制。 | `/color/{h:hex}` |
+| s | [0-9A-Za-z]++ | 數字和大小寫英文字母。 | `/profile/{s:username}` |
 
 在變數路由名稱的前面加上 `:` 來表明欲使用的正規表達式規則，其格式為 `{規則:變數名稱}`。用上正規表達式後亦能在變數名稱後加上 `?`（問號）來作為選擇性路由。
 
@@ -120,20 +119,20 @@ func main() {
 	d := davai.New()
 	// 使用 Davai 的預設正規表達式規則。
 	d.Get("/user/{i:id}", UserHandler)
-	d.Get("/user/{a:name?}", UserHandler)
+	d.Get("/user/{s:name?}", UserHandler)
 	http.Handle("/", d)
 }
 ```
 
 ### 自訂規則
 
-如果 Davai 預設的正規表達式規則不合乎你的需求，可以考慮透過 `AddRule` 來追加新的正規表達式規則。
+如果 Davai 預設的正規表達式規則不合乎你的需求，可以考慮透過 `Rule` 來追加新的正規表達式規則。
 
 ```go
 func main() {
 	d := davai.New()
 	// 透過 `AddRule` 可以追加新的正規表達式規則。
-	d.AddRule("s", "[0-9a-z]++")
+	d.Rule("s", "[0-9a-z]++")
 	// 接著就能夠直接在路由中使用。
 	d.Get("/post/{s:name}", PostHandler)
 	http.Handle("/", d)
@@ -264,7 +263,9 @@ func main() {
 	// 順序：3
 	d.Get("/user/{s:name}", UserHandler)
 	// 順序：4
-	d.Get("/{*:name}", AnyHandler)
+    d.Get("/{*:name}", AnyHandler)
+    // 順序：5
+	d.Get("/{*:name}", RootHandler)
 	http.Handle("/", d)
 }
 ```
