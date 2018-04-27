@@ -22,6 +22,19 @@ Davai（давай）是個基於 `net/http` 的 Golang 基本 HTTP 路由，這
 
 xx
 
+#
+
+|           範例            | 支援 |          說明         |       會相符的範例       |
+| -----------------------  | ---- | -------------------- | ---------------------- |
+| `/{*:title}`             |   ○  | 基於根目錄的隨意路由。   | `/hello`、`/foo/bar`    |
+| `/`                      |   ○  | 根目錄。               | `/`                    |
+| `/products`              |   ○  | 靜態路由。              | `/products`            |
+| `/{page}.html`           |   ○  | 擷取路由和固定後輟。     | `/foo.html`            |
+| `/user/{i:id?}`          |   ○  | 選擇性擷取路由。         | `/user`、`/user/58`    |
+| `/album/{i:id}/detail`   |   ○  | 靜態路由和正規表達式路由。 | `/album/162/detail`    |
+| `/api/user-{id}.json`    |   ○  | 固定前、後輟的擷取路由。   | `/api/user-admin.json` |
+| `/{type}-{id}.html`      |   ✕  | 雙重擷取路由。           | `/tshirt-3.html`       |
+
 # 安裝方式
 
 打開終端機並且透過 `go get` 安裝此套件即可。
