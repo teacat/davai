@@ -5,6 +5,16 @@ import (
 	"strings"
 )
 
+const (
+	priorityPath      = 8
+	priorityStatic    = 3
+	priorityGroup     = 2
+	priorityRegExp    = 1
+	priorityText      = 1
+	priorityOptional  = -1
+	priorityAnyRegExp = -1
+)
+
 // Rule 呈現了單個正規表達式規則。
 type Rule struct {
 	// Name 是這個規則的代稱。
@@ -15,17 +25,21 @@ type Rule struct {
 
 // Part 呈現了路由上的其中一個片段。
 type Part struct {
-	// Rule 是正規表達式的規則。
+	// rule 是正規表達式的規則。
 	rule *Rule
-	// Name 是此路由的擷取名稱。
+	// name 是此路由的擷取名稱。
 	name string
-	// Path 是這個片段的標準路徑。
+	// path 是這個片段的標準路徑。
 	path string
-	// IsCaptureGroup 表明此片段是否為擷取群組。
+	// suffix 是片段的固定後輟。
+	suffix string
+	// prefix 是片段的固定前輟。
+	prefix string
+	// isCaptureGroup 表明此片段是否為擷取群組。
 	isCaptureGroup bool
-	// IsRegExp 表明此片段是否有用上正規表達式。
+	// isRegExp 表明此片段是否有用上正規表達式。
 	isRegExp bool
-	// IsOptional 表明此片段是否為可選。
+	// isOptional 表明此片段是否為可選。
 	isOptional bool
 }
 
@@ -41,8 +55,10 @@ type Route struct {
 	method string
 	// parts 是路徑上的片段。
 	parts []*Part
-	// len 是這個路由所包含的片段數，越高則越有優先度。
-	len uint8
+	// len 是這個路由的片段數量。
+	len int
+	// priority 是這個路由的優先度。
+	priority int16
 	// hasRegExp 表示此路由中是否帶有正規表達式規則。
 	hasRegExp bool
 	// hasCaptureGroup 表示此路由中是否帶有擷取群組。
@@ -85,20 +101,45 @@ func (r *Route) sortHandlers() {
 	}
 }
 
+// addPriority 會替此路由增加指定的優先度。
+func (r *Route) addPriority(priority int) {
+	r.priority += int16(priority)
+}
+
 // tearApart 會將路由的路徑逐一拆解成片段供稍後方便使用。
 func (r *Route) tearApart() {
 	// 將路徑以 `/` 作為分水嶺來拆開。
 	parts := strings.Split(r.path, "/")
-	// 記載這個路由的片段數量，之後會以此作為優先順序考量。
-	r.len = uint8(len(parts))
+
 	// 遞迴每個片段，並且分析資料。
 	for _, v := range parts {
+		if v == "" {
+			continue
+		}
+		//
+		r.len++
 		// 是否為 `{}` 擷取群組。
 		var isCaptureGroup bool
-		if v[0:1] == "{" {
+		if strings.Contains(v, "{") {
 			isCaptureGroup = true
-			// 移除路徑上的擷取群組符號。
-			v = strings.TrimRight(strings.TrimLeft(v, "{"), "}")
+			r.hasCaptureGroup = true
+		}
+		//
+		var prefix string
+		var suffix string
+		if isCaptureGroup {
+			left := strings.Split(v, "{")
+			right := strings.Split(v, "}")
+			//
+			if left[0] != "" {
+				prefix = left[0]
+			}
+			//
+			if right[1] != "" {
+				suffix = right[1]
+			}
+			// 移除路徑上的擷取群組符號與固定前後輟。
+			v = strings.Split(strings.Split(v, "{")[1], "}")[0]
 		}
 		// 是否有 `?` 作為可選路由。
 		var isOptional bool
@@ -134,13 +175,36 @@ func (r *Route) tearApart() {
 			rule:           rule,
 			name:           varName,
 			path:           v,
+			prefix:         prefix,
+			suffix:         suffix,
 			isCaptureGroup: isCaptureGroup,
 			isRegExp:       isRegExp,
 			isOptional:     isOptional,
 		})
 		//
+		r.addPriority(priorityPath)
+		//
+		if prefix != "" || suffix != "" {
+			r.addPriority(priorityText)
+		}
+		//
 		if isCaptureGroup {
-			r.hasCaptureGroup = true
+			r.addPriority(priorityGroup)
+			//
+			if isRegExp {
+				r.addPriority(priorityRegExp)
+				//
+				if ruleName == "*" {
+					r.addPriority(priorityAnyRegExp)
+				}
+			}
+			//
+			if isOptional {
+				r.addPriority(priorityOptional)
+			}
+			//
+		} else {
+			r.addPriority(priorityStatic)
 		}
 	}
 }

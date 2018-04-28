@@ -18,6 +18,7 @@ type RouteGroup struct {
 
 // newRoute 會在目前的路由群組中依指定的方法、路徑、處理函式來插入新的路由。
 func (r *RouteGroup) newRoute(method string, path string, handlers ...interface{}) *Route {
+	//
 	var rawHandlers []interface{}
 	for _, v := range r.middlewares {
 		rawHandlers = append(rawHandlers, v)

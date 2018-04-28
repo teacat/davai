@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"strings"
 )
 
 func main() {
@@ -17,7 +18,7 @@ func New() *Router {
 		rules:      make(map[string]*Rule),
 	}
 	// 初始化一個 `根` 群組。
-	r.Group("/")
+	r.Group("")
 	// 初始化預設的正規表達式規則。
 	r.Rule("*", ".+?")
 	r.Rule("i", "[0-9]++")
@@ -33,11 +34,21 @@ func Vars(r *http.Request) map[string]string {
 
 // Router 是路由器本體。
 type Router struct {
-	routeNames      map[string]*Route
-	routes          []*Route
-	routeGroups     []*RouteGroup
+	// routeNames 是用來存放已命名的路由供之後取得。
+	routeNames map[string]*Route
+	// routes 是現有的全部路由。
+	routes []*Route
+	// routeGroups 是所有的路由群組。
+	routeGroups []*RouteGroup
+	// noRouteHandlers 是無路由時所會呼叫的處理函式。
 	noRouteHandlers []interface{}
-	rules           map[string]*Rule
+	// rules 用來存放所有的正規表達式規則。
+	rules map[string]*Rule
+	// staticRoutes 是所有的靜態路由，這會讓路由比對率先和此切片快速比對，
+	// 若無相符的路由才重新和所有動態路由比對。
+	//staticRoutes []*Route
+	// dymanicRoutes 是所有的動態路由。
+	// dymanicRoutes   []*Route
 }
 
 // Get 會依照 GET 方法建立相對應的路由。
@@ -76,6 +87,7 @@ func (r *Router) Generate(name string, params ...map[string]string) string {
 	if !ok {
 		return ""
 	}
+	//
 	var path string
 	if len(params) == 0 {
 		for _, part := range v.parts {
@@ -83,6 +95,7 @@ func (r *Router) Generate(name string, params ...map[string]string) string {
 		}
 		return path
 	}
+	//
 	for _, part := range v.parts {
 		if part.name == "" {
 			path += fmt.Sprintf("/%s", part.path)
@@ -149,12 +162,46 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 //
 func (r *Router) dispatch(w http.ResponseWriter, req *http.Request) {
-	fmt.Println(req.URL.Path)
+	//
+	u := strings.Split(req.URL.Path, "/")
+	u = u[1:]
+	uLen := len(u)
+
+	var matchedRoute *Route
+	// 遞迴每個路由。
+	for _, r := range r.routes {
+		// 遞迴路由中的每個片段。
+		for i, p := range r.parts {
+			// 如果片段已經超過網址的長度則離開。
+			if i > uLen-1 {
+				break
+			}
+			// 取得與此片段相對應的請求網址片段。
+			uPart := u[i]
+			fmt.Printf("debug[%s]:%s, %s\n", r.path, u[i], p.path)
+			if u[i] != p.path {
+				break
+			}
+			if i == r.len-1 {
+				matchedRoute = r
+
+			}
+		}
+		if matchedRoute != nil {
+			break
+		}
+	}
+
+	if matchedRoute != nil {
+		matchedRoute.handler(w, req)
+	}
+
+	//
 }
 
 // sort 會依照路由群組內路由的片段數來做重新排序，用以改進比對時的優先順序。
 func (r *Router) sort() {
 	sort.Slice(r.routes, func(i, j int) bool {
-		return r.routes[i].len > r.routes[j].len
+		return r.routes[i].priority > r.routes[j].priority
 	})
 }
