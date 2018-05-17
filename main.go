@@ -162,18 +162,18 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 //
 func (r *Router) dispatch(w http.ResponseWriter, req *http.Request) {
-	//
-	u := strings.Split(req.URL.Path, "/")
-	u = u[1:]
-	uLen := len(u)
-
 	var matchedRoute *Route
+
+	// 將請求網址拆分成片段。
+	u := strings.Split(req.URL.Path, "/")[1:]
+	l := len(u)
+
 	// 遞迴每個路由。
 	for _, r := range r.routes {
 		// 遞迴路由中的每個片段。
 		for i, p := range r.parts {
 			// 如果片段已經超過網址的長度則離開。
-			if i > uLen-1 {
+			if i > l-1 {
 				break
 			}
 			// 取得與此片段相對應的請求網址片段。

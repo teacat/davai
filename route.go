@@ -35,6 +35,8 @@ type Part struct {
 	suffix string
 	// prefix 是片段的固定前輟。
 	prefix string
+	// isStatic 表明是否為靜態片段無任何屬性。
+	isStatic bool
 	// isCaptureGroup 表明此片段是否為擷取群組。
 	isCaptureGroup bool
 	// isRegExp 表明此片段是否有用上正規表達式。
@@ -59,6 +61,8 @@ type Route struct {
 	len int
 	// priority 是這個路由的優先度。
 	priority int16
+	// isStatic 表明是否為靜態路由無任何屬性。
+	isStatic bool
 	// hasRegExp 表示此路由中是否帶有正規表達式規則。
 	hasRegExp bool
 	// hasCaptureGroup 表示此路由中是否帶有擷取群組。
@@ -118,11 +122,16 @@ func (r *Route) tearApart() {
 		}
 		//
 		r.len++
+		//
+		var isStatic bool
 		// 是否為 `{}` 擷取群組。
 		var isCaptureGroup bool
 		if strings.Contains(v, "{") {
 			isCaptureGroup = true
 			r.hasCaptureGroup = true
+		} else {
+			isStatic = true
+			r.isStatic = true
 		}
 		//
 		var prefix string
@@ -177,6 +186,7 @@ func (r *Route) tearApart() {
 			path:           v,
 			prefix:         prefix,
 			suffix:         suffix,
+			isStatic:       isStatic,
 			isCaptureGroup: isCaptureGroup,
 			isRegExp:       isRegExp,
 			isOptional:     isOptional,
