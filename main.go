@@ -3,6 +3,7 @@ package davai
 import (
 	"fmt"
 	"net/http"
+	"regexp"
 	"sort"
 	"strings"
 )
@@ -20,9 +21,9 @@ func New() *Router {
 	// 初始化一個 `根` 群組。
 	r.Group("")
 	// 初始化預設的正規表達式規則。
-	r.Rule("*", ".+?")
-	r.Rule("i", "[0-9]++")
-	r.Rule("s", "[0-9A-Za-z]++")
+	r.Rule("*", ".*")
+	r.Rule("i", "[0-9]+")
+	r.Rule("s", "[0-9A-Za-z]+")
 	return r
 }
 
@@ -142,6 +143,9 @@ func (r *Router) Run(addr ...string) error {
 	} else {
 		a = addr[0]
 	}
+	for _, v := range r.routes {
+		fmt.Printf("%s, %d\n", v.path, v.priority)
+	}
 	return http.ListenAndServe(a, r)
 }
 
@@ -165,33 +169,90 @@ func (r *Router) dispatch(w http.ResponseWriter, req *http.Request) {
 	var matchedRoute *Route
 
 	// 將請求網址拆分成片段。
-	u := strings.Split(req.URL.Path, "/")[1:]
-	l := len(u)
+	components := strings.Split(req.URL.Path, "/")[1:]
+	componentLength := len(components)
 
 	// 遞迴每個路由。
-	for _, r := range r.routes {
-		// 遞迴路由中的每個片段。
-		for i, p := range r.parts {
-			// 如果片段已經超過網址的長度則離開。
-			if i > l-1 {
-				break
-			}
-			// 取得與此片段相對應的請求網址片段。
-			uPart := u[i]
-			fmt.Printf("debug[%s]:%s, %s\n", r.path, u[i], p.path)
-			if u[i] != p.path {
-				break
-			}
-			if i == r.len-1 {
-				matchedRoute = r
+	for _, route := range r.routes {
+		var matched bool
 
+		partLength := len(route.parts)
+
+		// 遞迴路由中的每個片段。
+		for index, part := range route.parts {
+			component := components[index]
+
+			//fmt.Printf("%+v", part)
+			//fmt.Println(components[index])
+			//fmt.Println("\n\n")
+
+			if part.isStatic {
+				//
+				if part.path != component {
+					break
+				}
 			}
+
+			isLastComponent := index+1 > componentLength-1
+			isLastPart := index+1 > partLength-1
+
+			if part.isCaptureGroup {
+				value := component
+
+				if part.prefix != "" {
+					if !strings.HasPrefix(component, part.prefix) {
+						break
+					}
+					value = strings.TrimPrefix(component, part.prefix)
+				}
+				if part.suffix != "" {
+					if !strings.HasSuffix(component, part.suffix) {
+						break
+					}
+					value = strings.TrimSuffix(component, part.suffix)
+				}
+				if part.isRegExp {
+
+					//if part.rule.regExp == ".*" {
+					//	if isLastPart {
+					//		matched = true
+					//		break
+					//	}
+					//}
+
+					if matched, _ := regexp.MatchString(part.rule.regExp, value); !matched {
+						break
+					}
+				}
+			}
+
+			if !isLastPart {
+				if route.parts[index+1].isOptional {
+					if isLastComponent {
+						matched = true
+						break
+					}
+				}
+			}
+
+			// RegExp Cache
+
+			if isLastPart && isLastComponent {
+				matched = true
+				break
+			}
+			if isLastComponent {
+				break
+			}
+
 		}
-		if matchedRoute != nil {
+		if matched {
+			matchedRoute = route
 			break
 		}
 	}
 
+	//
 	if matchedRoute != nil {
 		matchedRoute.handler(w, req)
 	}

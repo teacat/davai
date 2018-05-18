@@ -6,13 +6,14 @@ import (
 )
 
 const (
-	priorityPath      = 8
-	priorityStatic    = 3
-	priorityGroup     = 2
+	priorityRoot      = 20
+	priorityPath      = 16
+	priorityStatic    = 8
+	priorityGroup     = 4
+	priorityText      = 2
 	priorityRegExp    = 1
-	priorityText      = 1
 	priorityOptional  = -1
-	priorityAnyRegExp = -1
+	priorityAnyRegExp = -2
 )
 
 // Rule 呈現了單個正規表達式規則。
@@ -114,6 +115,11 @@ func (r *Route) addPriority(priority int) {
 func (r *Route) tearApart() {
 	// 將路徑以 `/` 作為分水嶺來拆開。
 	parts := strings.Split(r.path, "/")
+
+	if r.path == "/" {
+		r.addPriority(priorityRoot)
+		return
+	}
 
 	// 遞迴每個片段，並且分析資料。
 	for _, v := range parts {
