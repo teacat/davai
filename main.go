@@ -15,8 +15,9 @@ func main() {
 // New 會建立一個新的路由器。
 func New() *Router {
 	r := &Router{
-		routeNames: make(map[string]*Route),
-		rules:      make(map[string]*Rule),
+		routeNames:   make(map[string]*Route),
+		rules:        make(map[string]*Rule),
+		staticRoutes: make(map[string]*Route),
 	}
 	// 初始化一個 `根` 群組。
 	r.Group("")
@@ -47,7 +48,7 @@ type Router struct {
 	rules map[string]*Rule
 	// staticRoutes 是所有的靜態路由，這會讓路由比對率先和此切片快速比對，
 	// 若無相符的路由才重新和所有動態路由比對。
-	staticRoutes []*Route
+	staticRoutes map[string]*Route
 	// dymanicRoutes 是所有的動態路由。
 	dymanicRoutes []*Route
 }
@@ -143,9 +144,10 @@ func (r *Router) Run(addr ...string) error {
 	} else {
 		a = addr[0]
 	}
-	for _, v := range r.routes {
-		fmt.Printf("%s, %d\n", v.path, v.priority)
-	}
+	//for _, v := range r.routes {
+	//	fmt.Printf("%s, %d\n", v.path, v.priority)
+	//}
+	//fmt.Printf("%+v", r.staticRoutes)
 	return http.ListenAndServe(a, r)
 }
 
@@ -164,111 +166,104 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	r.dispatch(w, req)
 }
 
+func (r *Router) call(route *Route, w http.ResponseWriter, req *http.Request) {
+	route.handler(w, req)
+}
+
 //
 func (r *Router) dispatch(w http.ResponseWriter, req *http.Request) {
 	var matchedRoute *Route
+
+	//
+	if route, ok := r.staticRoutes[req.URL.Path]; ok {
+		r.call(route, w, req)
+		return
+	}
 
 	// 將請求網址拆分成片段。
 	components := strings.Split(req.URL.Path, "/")[1:]
 	componentLength := len(components)
 
-	fmt.Println(componentLength)
+	// 遞迴每個路由。
+	for _, route := range r.routes {
+		var matched bool
 
-	if componentLength == 1 && components[0] == "" {
-		for _, route := range r.routes {
-			if route.path == "/" {
-				matchedRoute = route
-				break
+		partLength := len(route.parts)
+
+		// 遞迴路由中的每個片段。
+		for index, part := range route.parts {
+			component := components[index]
+
+			if part.isStatic {
+				//
+				if part.path != component {
+					break
+				}
 			}
-		}
 
-	} else {
+			isLastComponent := index+1 > componentLength-1
+			isLastPart := index+1 > partLength-1
 
-		// 遞迴每個路由。
-		for _, route := range r.routes {
-			var matched bool
+			if part.isCaptureGroup {
+				value := component
 
-			partLength := len(route.parts)
+				if part.prefix != "" {
+					if !strings.HasPrefix(component, part.prefix) {
+						break
+					}
+					value = strings.TrimPrefix(component, part.prefix)
+				}
+				if part.suffix != "" {
+					if !strings.HasSuffix(component, part.suffix) {
+						break
+					}
+					value = strings.TrimSuffix(component, part.suffix)
+				}
+				if part.isRegExp {
 
-			// 遞迴路由中的每個片段。
-			for index, part := range route.parts {
-				component := components[index]
+					//if part.rule.regExp == ".*" {
+					//	if isLastPart {
+					//		matched = true
+					//		break
+					//	}
+					//}
 
-				//fmt.Printf("%+v", part)
-				//fmt.Println(components[index])
-				//fmt.Println("\n\n")
-
-				if part.isStatic {
-					//
-					if part.path != component {
+					if matched, _ := regexp.MatchString(part.rule.regExp, value); !matched {
 						break
 					}
 				}
-
-				isLastComponent := index+1 > componentLength-1
-				isLastPart := index+1 > partLength-1
-
-				if part.isCaptureGroup {
-					value := component
-
-					if part.prefix != "" {
-						if !strings.HasPrefix(component, part.prefix) {
-							break
-						}
-						value = strings.TrimPrefix(component, part.prefix)
-					}
-					if part.suffix != "" {
-						if !strings.HasSuffix(component, part.suffix) {
-							break
-						}
-						value = strings.TrimSuffix(component, part.suffix)
-					}
-					if part.isRegExp {
-
-						//if part.rule.regExp == ".*" {
-						//	if isLastPart {
-						//		matched = true
-						//		break
-						//	}
-						//}
-
-						if matched, _ := regexp.MatchString(part.rule.regExp, value); !matched {
-							break
-						}
-					}
-				}
-
-				if !isLastPart {
-					if route.parts[index+1].isOptional {
-						if isLastComponent {
-							matched = true
-							break
-						}
-					}
-				}
-
-				// RegExp Cache
-
-				if isLastPart && isLastComponent {
-					matched = true
-					break
-				}
-				if isLastComponent {
-					break
-				}
-
 			}
-			if matched {
-				matchedRoute = route
+
+			if !isLastPart {
+				if route.parts[index+1].isOptional {
+					if isLastComponent {
+						matched = true
+						break
+					}
+				}
+			}
+
+			// RegExp Cache
+
+			if isLastPart && isLastComponent {
+				matched = true
 				break
 			}
-		}
+			if isLastComponent {
+				break
+			}
 
+		}
+		if matched {
+			matchedRoute = route
+			break
+		}
 	}
 
 	//
 	if matchedRoute != nil {
-		matchedRoute.handler(w, req)
+		r.call(matchedRoute, w, req)
+		return
 	}
 
 	//

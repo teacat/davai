@@ -36,10 +36,16 @@ func (r *RouteGroup) newRoute(method string, path string, handlers ...interface{
 	route.init()
 	// 保存路由至此群組。
 	r.routes = append(r.routes, route)
-	// 保存路由至路由器。
-	r.router.routes = append(r.router.routes, route)
-	// 依照優先度重新排序路由。
-	r.router.sort()
+	//
+	if route.isStatic {
+		//
+		r.router.staticRoutes[route.path] = route
+	} else {
+		// 保存路由至路由器。
+		r.router.routes = append(r.router.routes, route)
+		// 依照優先度重新排序路由。
+		r.router.sort()
+	}
 	return route
 }
 

@@ -113,6 +113,8 @@ func (r *Route) addPriority(priority int) {
 
 // tearApart 會將路由的路徑逐一拆解成片段供稍後方便使用。
 func (r *Route) tearApart() {
+	r.isStatic = true
+
 	// 將路徑以 `/` 作為分水嶺來拆開。
 	parts := strings.Split(r.path, "/")
 
@@ -135,9 +137,9 @@ func (r *Route) tearApart() {
 		if strings.Contains(v, "{") {
 			isCaptureGroup = true
 			r.hasCaptureGroup = true
+			r.isStatic = false
 		} else {
 			isStatic = true
-			r.isStatic = true
 		}
 		//
 		var prefix string
