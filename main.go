@@ -47,9 +47,9 @@ type Router struct {
 	rules map[string]*Rule
 	// staticRoutes 是所有的靜態路由，這會讓路由比對率先和此切片快速比對，
 	// 若無相符的路由才重新和所有動態路由比對。
-	//staticRoutes []*Route
+	staticRoutes []*Route
 	// dymanicRoutes 是所有的動態路由。
-	// dymanicRoutes   []*Route
+	dymanicRoutes []*Route
 }
 
 // Get 會依照 GET 方法建立相對應的路由。
@@ -172,84 +172,98 @@ func (r *Router) dispatch(w http.ResponseWriter, req *http.Request) {
 	components := strings.Split(req.URL.Path, "/")[1:]
 	componentLength := len(components)
 
-	// 遞迴每個路由。
-	for _, route := range r.routes {
-		var matched bool
+	fmt.Println(componentLength)
 
-		partLength := len(route.parts)
+	if componentLength == 1 && components[0] == "" {
+		for _, route := range r.routes {
+			if route.path == "/" {
+				matchedRoute = route
+				break
+			}
+		}
 
-		// 遞迴路由中的每個片段。
-		for index, part := range route.parts {
-			component := components[index]
+	} else {
 
-			//fmt.Printf("%+v", part)
-			//fmt.Println(components[index])
-			//fmt.Println("\n\n")
+		// 遞迴每個路由。
+		for _, route := range r.routes {
+			var matched bool
 
-			if part.isStatic {
-				//
-				if part.path != component {
+			partLength := len(route.parts)
+
+			// 遞迴路由中的每個片段。
+			for index, part := range route.parts {
+				component := components[index]
+
+				//fmt.Printf("%+v", part)
+				//fmt.Println(components[index])
+				//fmt.Println("\n\n")
+
+				if part.isStatic {
+					//
+					if part.path != component {
+						break
+					}
+				}
+
+				isLastComponent := index+1 > componentLength-1
+				isLastPart := index+1 > partLength-1
+
+				if part.isCaptureGroup {
+					value := component
+
+					if part.prefix != "" {
+						if !strings.HasPrefix(component, part.prefix) {
+							break
+						}
+						value = strings.TrimPrefix(component, part.prefix)
+					}
+					if part.suffix != "" {
+						if !strings.HasSuffix(component, part.suffix) {
+							break
+						}
+						value = strings.TrimSuffix(component, part.suffix)
+					}
+					if part.isRegExp {
+
+						//if part.rule.regExp == ".*" {
+						//	if isLastPart {
+						//		matched = true
+						//		break
+						//	}
+						//}
+
+						if matched, _ := regexp.MatchString(part.rule.regExp, value); !matched {
+							break
+						}
+					}
+				}
+
+				if !isLastPart {
+					if route.parts[index+1].isOptional {
+						if isLastComponent {
+							matched = true
+							break
+						}
+					}
+				}
+
+				// RegExp Cache
+
+				if isLastPart && isLastComponent {
+					matched = true
 					break
 				}
+				if isLastComponent {
+					break
+				}
+
 			}
-
-			isLastComponent := index+1 > componentLength-1
-			isLastPart := index+1 > partLength-1
-
-			if part.isCaptureGroup {
-				value := component
-
-				if part.prefix != "" {
-					if !strings.HasPrefix(component, part.prefix) {
-						break
-					}
-					value = strings.TrimPrefix(component, part.prefix)
-				}
-				if part.suffix != "" {
-					if !strings.HasSuffix(component, part.suffix) {
-						break
-					}
-					value = strings.TrimSuffix(component, part.suffix)
-				}
-				if part.isRegExp {
-
-					//if part.rule.regExp == ".*" {
-					//	if isLastPart {
-					//		matched = true
-					//		break
-					//	}
-					//}
-
-					if matched, _ := regexp.MatchString(part.rule.regExp, value); !matched {
-						break
-					}
-				}
-			}
-
-			if !isLastPart {
-				if route.parts[index+1].isOptional {
-					if isLastComponent {
-						matched = true
-						break
-					}
-				}
-			}
-
-			// RegExp Cache
-
-			if isLastPart && isLastComponent {
-				matched = true
+			if matched {
+				matchedRoute = route
 				break
 			}
-			if isLastComponent {
-				break
-			}
+		}
 
-		}
-		if matched {
-			matchedRoute = route
-			break
-		}
 	}
 
 	//
