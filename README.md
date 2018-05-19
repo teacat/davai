@@ -40,7 +40,13 @@ Davai（давай）是一個十分快速的 HTTP 路由器，這能夠讓你�
 
 # 效能比較
 
-xx
+這裡有份簡略化的效能測試報表。
+
+```
+測試規格：
+1.7 GHz Intel Core i7 (4650U)
+8 GB 1600 MHz DDR3
+```
 
 # 支援規則
 
@@ -56,6 +62,77 @@ xx
 | `/album/{i:id}/detail`   |   ○  | 靜態路由和正規表達式路由。 | `/album/162/detail`    |
 | `/api/user-{id}.json`    |   ○  | 固定前、後輟的擷取路由。   | `/api/user-admin.json` |
 | `/{type}-{id}.html`      |   ✕  | 雙重擷取路由於單一片段中。 | `/tshirt-3.html`       |
+
+```
+路由：/user/{name}
+
+/user/admin                ○
+/user/admin/profile        ✕
+/user/                     ✕
+```
+
+```
+路由：/user/{name?}
+
+/user/                     ○
+/user/admin                ○
+/user/admin/profile        ✕
+```
+
+```
+路由：/api/resource-{id}.json
+
+/api/resource-123.json     ○
+/api/resource-.json        ✕
+/api/                      ✕
+```
+
+```
+路由：/user/{i:id}
+
+/user/1234                 ○
+/user/                     ✕
+/user/profile              ✕
+/user/1234/profile         ✕
+```
+
+```
+路由：/src/{*:filename}
+
+/src/                      ○
+/src/example.png           ○
+/src/subdir/example.png    ○
+```
+
+#
+
+priorityRoot      = 20
+priorityPath      = 16
+priorityStatic    = 8
+priorityGroup     = 4
+priorityText      = 2
+priorityRegExp    = 1
+priorityOptional  = -1
+priorityAnyRegExp = -2
+
+```
+優先度    路由
+69       /user/{s:name}/profile
+48       /user/admin
+24       /user
+20       /
+19       /{*:path}
+```
+
+```
+├------------
+├---------
+├-----
+├----
+├--
+├--
+└-
+```
 
 # 安裝方式
 
