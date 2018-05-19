@@ -21,6 +21,16 @@ Davai（давай）是一個十分快速的 HTTP 路由器，這能夠讓你�
 
 額外一點在於 Davai 能夠快取部分網址來避免重複的正規表達式驗證、且相容原生的 `net/http` 函式讓使用設計更加地通用。
 
+# 效能比較
+
+這裡有份簡略化的效能測試報表。
+
+```
+測試規格：
+1.7 GHz Intel Core i7 (4650U)
+8 GB 1600 MHz DDR3
+```
+
 # 索引
 
 * [效能比較](#效能比較)
@@ -38,15 +48,42 @@ Davai（давай）是一個十分快速的 HTTP 路由器，這能夠讓你�
     * [無路由](#無路由)
 * [比對優先度](#比對優先度)
 
-# 效能比較
+# 安裝方式
 
-這裡有份簡略化的效能測試報表。
+打開終端機並且透過 `go get` 安裝此套件即可。
 
+```bash
+$ go get github.com/teacat/go-davai
 ```
-測試規格：
-1.7 GHz Intel Core i7 (4650U)
-8 GB 1600 MHz DDR3
+
+# 使用方式
+
+透過 `davai.New` 建立一個新的路由器，並且以 `Get`、`Post`⋯等方法來建立基於不同路由的處理函式，接著將路由器傳入 `http.Handle` 來開始監聽服務。
+
+```go
+package main
+
+import (
+	"net/http"
+
+	davai "github.com/teacat/go-davai"
+)
+
+func main() {
+	d := davai.New()
+	d.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		// ...
+	})
+	d.Get("/posts", func(w http.ResponseWriter, r *http.Request) {
+		// ...
+	})
+	d.Post("/album", func(w http.ResponseWriter, r *http.Request) {
+		// ...
+	})
+	http.Handle("/", d)
+}
 ```
+
 
 # 支援規則
 
@@ -63,21 +100,9 @@ Davai（давай）是一個十分快速的 HTTP 路由器，這能夠讓你�
 | `/api/user-{id}.json`    |   ○  | 固定前、後輟的擷取路由。   | `/api/user-admin.json` |
 | `/{type}-{id}.html`      |   ✕  | 雙重擷取路由於單一片段中。 | `/tshirt-3.html`       |
 
-```
-路由：/user/{name}
 
-/user/admin                ○
-/user/admin/profile        ✕
-/user/                     ✕
-```
 
-```
-路由：/user/{name?}
 
-/user/                     ○
-/user/admin                ○
-/user/admin/profile        ✕
-```
 
 ```
 路由：/api/resource-{id}.json
@@ -87,14 +112,7 @@ Davai（давай）是一個十分快速的 HTTP 路由器，這能夠讓你�
 /api/                      ✕
 ```
 
-```
-路由：/user/{i:id}
 
-/user/1234                 ○
-/user/                     ✕
-/user/profile              ✕
-/user/1234/profile         ✕
-```
 
 ```
 路由：/src/{*:filename}
@@ -134,55 +152,17 @@ priorityAnyRegExp = -2
 └-
 ```
 
-# 安裝方式
-
-打開終端機並且透過 `go get` 安裝此套件即可。
-
-```bash
-$ go get github.com/teacat/go-davai
-```
-
-# 使用方式
-
-透過 `davai.New` 建立一個新的路由器，並且以 `Get`、`Post`⋯等方法來建立基於不同路由的處理函式，接著將路由器傳入 `http.Handle` 來開始監聽服務。
-
-```go
-package main
-
-import (
-	"net/http"
-
-	davai "github.com/teacat/go-davai"
-)
-
-func main() {
-	d := davai.New()
-	d.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		// ...
-	})
-	d.Get("/posts", func(w http.ResponseWriter, r *http.Request) {
-		// ...
-	})
-	d.Post("/album", func(w http.ResponseWriter, r *http.Request) {
-		// ...
-	})
-	http.Handle("/", d)
-}
-```
 
 ## 變數路由
 
 透過 `{}`（花括號）符號可以擷取路由中指定片段的內容並作為指定變數在路由器中使用。
 
-```go
-func main() {
-	d := davai.New()
-	// 這個路由與 `/1234`、`/hello` 相符。
-	d.Get("/{name}", IndexHandler)
-	// 這個路由會和 `/posts/1234`、`/posts/hello` 相符。
-	d.Get("/posts/{title}", PostsHandler)
-	http.Handle("/", r)
-}
+```
+路由：/user/{name}
+
+/user/admin                ○
+/user/admin/profile        ✕
+/user/                     ✕
 ```
 
 在路由中以 `davai.Vars` 並傳入 `*http.Request` 來取得在路由中所擷取的變數。
@@ -203,15 +183,12 @@ func main() {
 
 如果擷取的變數並不一定是必要的，那麼可以在變數名稱後加上 `?` 來作為「選擇性變數」。
 
-```go
-func main() {
-	d := davai.New()
-	// 這個路由與 `/user`、`/user/1234`、`/user/admin` 相符。
-	d.Get("/user/{name?}", UserHandler)
-	// 這個路由與 `/post`、`/post/1234`、`/post/my-life` 相符。
-	d.Get("/post/{title?}", PostHandler)
-	http.Handle("/", d)
-}
+```
+路由：/user/{name?}
+
+/user/                     ○
+/user/admin                ○
+/user/admin/profile        ✕
 ```
 
 ## 正規表達式路由
@@ -226,14 +203,13 @@ func main() {
 
 在變數路由名稱的前面加上 `:` 來表明欲使用的正規表達式規則，其格式為 `{規則:變數名稱}`。用上正規表達式後亦能在變數名稱後加上 `?`（問號）來作為選擇性路由。
 
-```go
-func main() {
-	d := davai.New()
-	// 使用 Davai 的預設正規表達式規則。
-	d.Get("/user/{i:id}", UserHandler)
-	d.Get("/user/{s:name?}", UserHandler)
-	http.Handle("/", d)
-}
+```
+路由：/user/{i:id}
+
+/user/1234                 ○
+/user/                     ✕
+/user/profile              ✕
+/user/1234/profile         ✕
 ```
 
 ### 自訂規則
@@ -244,9 +220,9 @@ func main() {
 func main() {
 	d := davai.New()
 	// 透過 `AddRule` 可以追加新的正規表達式規則。
-	d.Rule("s", "[0-9a-z]++")
+	d.Rule("r", "[0-9a-z]++")
 	// 接著就能夠直接在路由中使用。
-	d.Get("/post/{s:name}", PostHandler)
+	d.Get("/post/{r:name}", PostHandler)
 	http.Handle("/", d)
 }
 ```
