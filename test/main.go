@@ -37,6 +37,7 @@ func main() {
 		w.Write([]byte("Root!"))
 	})
 	r.Get("/user/{s:name}/profile", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Printf("%+v", davai.Vars(r))
 		w.Write([]byte("Root!"))
 	})
 	/*

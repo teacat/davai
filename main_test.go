@@ -198,7 +198,7 @@ func TestBasicMethodRoute(t *testing.T) {
 		},
 		{
 			Path:       "http://localhost:8080/post",
-			Method:     methodPost,
+			Method:     methodGet,
 			StatusCode: statusNotFound,
 			Body:       "",
 		},

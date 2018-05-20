@@ -35,42 +35,42 @@ func (r *RouteGroup) newRoute(method string, path string, handlers ...interface{
 	//
 	if route.isStatic {
 		//
-		r.router.staticRoutes[route.path] = route
+		r.router.routes[route.method].statics[route.path] = route
 	} else {
 		// 保存路由至路由器。
-		r.router.routes = append(r.router.routes, route)
+		r.router.routes[route.method].dymanics = append(r.router.routes[route.method].dymanics, route)
 		// 依照優先度重新排序路由。
-		r.router.sort()
+		r.router.sort(route.method)
 	}
 	return route
 }
 
 // Get 會依照 GET 方法建立相對應的路由。
 func (r *RouteGroup) Get(path string, handlers ...interface{}) *Route {
-	return r.newRoute("get", path, handlers...)
+	return r.newRoute("GET", path, handlers...)
 }
 
 // Post 會依照 POST 方法建立相對應的路由。
 func (r *RouteGroup) Post(path string, handlers ...interface{}) *Route {
-	return r.newRoute("post", path, handlers...)
+	return r.newRoute("POST", path, handlers...)
 }
 
 // Put 會依照 PUT 方法建立相對應的路由。
 func (r *RouteGroup) Put(path string, handlers ...interface{}) *Route {
-	return r.newRoute("put", path, handlers...)
+	return r.newRoute("PUT", path, handlers...)
 }
 
 // Patch 會依照 PATCH 方法建立相對應的路由。
 func (r *RouteGroup) Patch(path string, handlers ...interface{}) *Route {
-	return r.newRoute("patch", path, handlers...)
+	return r.newRoute("PATCH", path, handlers...)
 }
 
 // Delete 會依照 DELETE 方法建立相對應的路由。
 func (r *RouteGroup) Delete(path string, handlers ...interface{}) *Route {
-	return r.newRoute("delete", path, handlers...)
+	return r.newRoute("DELETE", path, handlers...)
 }
 
 // Options 會依照 OPTIONS 方法建立相對應的路由。
 func (r *RouteGroup) Options(path string, handlers ...interface{}) *Route {
-	return r.newRoute("options", path, handlers...)
+	return r.newRoute("OPTIONS", path, handlers...)
 }

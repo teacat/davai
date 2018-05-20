@@ -269,6 +269,18 @@ func main() {
 }
 ```
 
+或者乾脆一點用於所有路由。
+
+```go
+func main() {
+	d := davai.New()
+	// 將多個中介軟體作為全域用途並在所有路由中執行。
+	d.Use(MyMiddleware, AnotherMiddlewate)
+	// ...
+	http.Handle("/", d)
+}
+```
+
 ## 靜態檔案與目錄
 
 ```go

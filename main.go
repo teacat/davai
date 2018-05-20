@@ -16,9 +16,34 @@ func main() {
 // New 會建立一個新的路由器。
 func New() *Router {
 	r := &Router{
-		routeNames:   make(map[string]*Route),
-		rules:        make(map[string]*Rule),
-		staticRoutes: make(map[string]*Route),
+		routeNames: make(map[string]*Route),
+		rules:      make(map[string]*Rule),
+		routes: map[string]*routes{
+			"GET": {
+				method:  "GET",
+				statics: make(map[string]*Route),
+			},
+			"POST": {
+				method:  "POST",
+				statics: make(map[string]*Route),
+			},
+			"PUT": {
+				method:  "PUT",
+				statics: make(map[string]*Route),
+			},
+			"PATCH": {
+				method:  "PATCH",
+				statics: make(map[string]*Route),
+			},
+			"DELETE": {
+				method:  "DELETE",
+				statics: make(map[string]*Route),
+			},
+			"OPTIONS": {
+				method:  "OPTIONS",
+				statics: make(map[string]*Route),
+			},
+		},
 	}
 	// 初始化一個 `根` 群組。
 	r.Group("")
@@ -33,10 +58,27 @@ func New() *Router {
 	return r
 }
 
+const (
+	varsKey = "davaiVars"
+)
+
 // Vars 能夠將接收到的路由變數轉換成本地的 `map[string]string` 格式來供存取使用。
 func Vars(r *http.Request) map[string]string {
-	vars := make(map[string]string)
-	return vars
+	if rv := contextGet(r, varsKey); rv != nil {
+		return rv.(map[string]string)
+	}
+	return nil
+}
+
+// routes 是單個方法的所有路由。
+type routes struct {
+	// method 是這個方法的名稱。
+	method string
+	// statics 是所有的靜態路由，這會讓路由比對率先和此切片快速比對，
+	// 若無相符的路由才重新和所有動態路由比對。
+	statics map[string]*Route
+	// dymanics 是所有的動態路由。
+	dymanics []*Route
 }
 
 // Router 是路由器本體。
@@ -45,21 +87,18 @@ type Router struct {
 	server *http.Server
 	// routeNames 是用來存放已命名的路由供之後取得。
 	routeNames map[string]*Route
-	// routes 是現有的全部路由。
-	routes []*Route
+	// routes 是現有的全部路由，以不同方法作為鍵名區分。
+	routes map[string]*routes
 	// routeGroups 是所有的路由群組。
 	routeGroups []*RouteGroup
+	// middlewares 是全域中介軟體。
+	middlewares []middleware
 	// noRouteMiddlewares 是無路由的中介軟體。
 	noRouteMiddlewares []middleware
 	// noRouteHandler 是無路由時所會呼叫的處理函式。
 	noRouteHandler func(w http.ResponseWriter, r *http.Request)
 	// rules 用來存放所有的正規表達式規則。
 	rules map[string]*Rule
-	// staticRoutes 是所有的靜態路由，這會讓路由比對率先和此切片快速比對，
-	// 若無相符的路由才重新和所有動態路由比對。
-	staticRoutes map[string]*Route
-	// dymanicRoutes 是所有的動態路由。
-	dymanicRoutes []*Route
 }
 
 // Get 會依照 GET 方法建立相對應的路由。
@@ -190,6 +229,11 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	r.dispatch(w, req)
 }
 
+//
+func (r *RouteGroup) Use(middlewares ...interface{}) {
+
+}
+
 // call 會呼叫指定路由的處理函式。
 func (r *Router) call(route *Route, w http.ResponseWriter, req *http.Request) {
 	middlewareLength := len(route.middlewares)
@@ -218,20 +262,26 @@ func (r *Router) callNoRoute(w http.ResponseWriter, req *http.Request) {
 	handler.ServeHTTP(w, req)
 }
 
-// disaptch 會解析接收到的請求並依照網址分發給指定的路由。
-func (r *Router) dispatch(w http.ResponseWriter, req *http.Request) {
+// 移除尾部 「/」
+// 移除尾部 「/」
+// 移除尾部 「/」
+// 移除尾部 「/」
+// 移除尾部 「/」
+func (r *Router) match(routes *routes, w http.ResponseWriter, req *http.Request) bool {
 	url := strings.ToLower(req.URL.Path)
 
-	if route, ok := r.staticRoutes[url]; ok {
+	if route, ok := routes.statics[url]; ok {
 		r.call(route, w, req)
-		return
+		return true
 	}
 
 	components := strings.Split(url, "/")[1:]
 	componentLength := len(components)
 
-	for _, route := range r.routes {
+	for _, route := range routes.dymanics {
 		var matched bool
+		var vars map[string]string
+
 		partLength := len(route.parts)
 
 		for index, part := range route.parts {
@@ -268,6 +318,10 @@ func (r *Router) dispatch(w http.ResponseWriter, req *http.Request) {
 						break
 					}
 				}
+				if vars == nil {
+					vars = make(map[string]string)
+				}
+				vars[part.name] = component
 			}
 			if !isLastPart {
 				if route.parts[index+1].isOptional {
@@ -286,17 +340,66 @@ func (r *Router) dispatch(w http.ResponseWriter, req *http.Request) {
 			}
 		}
 		if matched {
-			r.call(route, w, req)
-			return
+			if vars == nil {
+				r.call(route, w, req)
+			} else {
+				r.call(route, w, contextSet(req, varsKey, vars))
+			}
+			return true
 		}
 	}
+	return false
+}
 
-	r.callNoRoute(w, req)
+// disaptch 會解析接收到的請求並依照網址分發給指定的路由。
+func (r *Router) dispatch(w http.ResponseWriter, req *http.Request) {
+	var matched bool
+	switch req.Method {
+	case "GET":
+		matched = r.match(r.routes["GET"], w, req)
+	case "POST":
+		matched = r.match(r.routes["POST"], w, req)
+	case "PUT":
+		matched = r.match(r.routes["PUT"], w, req)
+	case "PATCH":
+		matched = r.match(r.routes["PATCH"], w, req)
+	case "DELETE":
+		matched = r.match(r.routes["DELETE"], w, req)
+	case "OPTIONS":
+		matched = r.match(r.routes["OPTIONS"], w, req)
+	}
+	if !matched {
+		r.callNoRoute(w, req)
+	}
 }
 
 // sort 會依照路由群組內路由的片段數來做重新排序，用以改進比對時的優先順序。
-func (r *Router) sort() {
-	sort.Slice(r.routes, func(i, j int) bool {
-		return r.routes[i].priority > r.routes[j].priority
-	})
+func (r *Router) sort(method string) {
+	switch method {
+	case "GET":
+		sort.Slice(r.routes["GET"].dymanics, func(i, j int) bool {
+			return r.routes["GET"].dymanics[i].priority > r.routes["GET"].dymanics[j].priority
+		})
+	case "POST":
+		sort.Slice(r.routes["POST"].dymanics, func(i, j int) bool {
+			return r.routes["POST"].dymanics[i].priority > r.routes["POST"].dymanics[j].priority
+		})
+	case "PUT":
+		sort.Slice(r.routes["PUT"].dymanics, func(i, j int) bool {
+			return r.routes["PUT"].dymanics[i].priority > r.routes["PUT"].dymanics[j].priority
+		})
+	case "PATCH":
+		sort.Slice(r.routes["PATCH"].dymanics, func(i, j int) bool {
+			return r.routes["PATCH"].dymanics[i].priority > r.routes["PATCH"].dymanics[j].priority
+		})
+	case "DELETE":
+		sort.Slice(r.routes["DELETE"].dymanics, func(i, j int) bool {
+			return r.routes["DELETE"].dymanics[i].priority > r.routes["DELETE"].dymanics[j].priority
+		})
+	case "OPTIONS":
+		sort.Slice(r.routes["OPTIONS"].dymanics, func(i, j int) bool {
+			return r.routes["OPTIONS"].dymanics[i].priority > r.routes["OPTIONS"].dymanics[j].priority
+		})
+	}
+
 }

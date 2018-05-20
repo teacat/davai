@@ -68,7 +68,7 @@ type Route struct {
 	hasRegExp bool
 	// hasCaptureGroup 表示此路由中是否帶有擷取群組。
 	hasCaptureGroup bool
-	// handlers 是尚未分類的路由處理函式、中介軟體。
+	// rawHandlers 是尚未分類的路由處理函式、中介軟體。
 	rawHandlers []interface{}
 	// middlewares 是這個路由的中介軟體。
 	middlewares []middleware
