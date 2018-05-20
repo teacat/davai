@@ -1,6 +1,7 @@
 package davai
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -25,6 +26,10 @@ func New() *Router {
 	r.Rule("*", ".*")
 	r.Rule("i", "[0-9]+")
 	r.Rule("s", "[0-9A-Za-z]+")
+	//
+	r.NoRoute(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(404)
+	})
 	return r
 }
 
@@ -36,14 +41,18 @@ func Vars(r *http.Request) map[string]string {
 
 // Router 是路由器本體。
 type Router struct {
+	// server 是 HTTP 伺服器。
+	server *http.Server
 	// routeNames 是用來存放已命名的路由供之後取得。
 	routeNames map[string]*Route
 	// routes 是現有的全部路由。
 	routes []*Route
 	// routeGroups 是所有的路由群組。
 	routeGroups []*RouteGroup
-	// noRouteHandlers 是無路由時所會呼叫的處理函式。
-	noRouteHandlers []interface{}
+	// noRouteMiddlewares 是無路由的中介軟體。
+	noRouteMiddlewares []middleware
+	// noRouteHandler 是無路由時所會呼叫的處理函式。
+	noRouteHandler func(w http.ResponseWriter, r *http.Request)
 	// rules 用來存放所有的正規表達式規則。
 	rules map[string]*Rule
 	// staticRoutes 是所有的靜態路由，這會讓路由比對率先和此切片快速比對，
@@ -121,7 +130,7 @@ func (r *Router) Rule(name string, regexp string) {
 }
 
 // Group 會建立新的路由群組，群組內的路由會共享前輟與中介軟體。
-func (r *Router) Group(path string, middlewares ...func(http.Handler) http.Handler) *RouteGroup {
+func (r *Router) Group(path string, middlewares ...interface{}) *RouteGroup {
 	group := &RouteGroup{
 		router:      r,
 		prefix:      path,
@@ -133,7 +142,19 @@ func (r *Router) Group(path string, middlewares ...func(http.Handler) http.Handl
 
 // NoRoute 會將傳入的處理函式作為無相對路由時的執行函式。
 func (r *Router) NoRoute(handlers ...interface{}) {
-	r.noRouteHandlers = handlers
+	for _, v := range handlers {
+		switch t := v.(type) {
+		// 中介軟體。
+		case func(http.Handler) http.Handler:
+			r.noRouteMiddlewares = append(r.noRouteMiddlewares, MiddlewareFunc(t))
+		// 進階中介軟體。
+		case middleware:
+			r.noRouteMiddlewares = append(r.noRouteMiddlewares, t)
+		// 處理函式。
+		case func(w http.ResponseWriter, r *http.Request):
+			r.noRouteHandler = t
+		}
+	}
 }
 
 // Run 能夠以 HTTP 開始執行路由器服務。
@@ -144,11 +165,14 @@ func (r *Router) Run(addr ...string) error {
 	} else {
 		a = addr[0]
 	}
-	//for _, v := range r.routes {
-	//	fmt.Printf("%s, %d\n", v.path, v.priority)
-	//}
-	//fmt.Printf("%+v", r.staticRoutes)
-	return http.ListenAndServe(a, r)
+	r.server = &http.Server{
+		Addr: "0.0.0.0" + a,
+		// WriteTimeout: time.Second * 15,
+		// ReadTimeout:  time.Second * 15,
+		// IdleTimeout:  time.Second * 60,
+		Handler: r,
+	}
+	return r.server.ListenAndServe()
 }
 
 // RunTLS 會依據憑證和 HTTPS 的方式開始執行路由器服務。
@@ -156,9 +180,9 @@ func (r *Router) RunTLS(addr string, certFile string, keyFile string) error {
 	return http.ListenAndServeTLS(addr, certFile, keyFile, r)
 }
 
-// Shutdown 能夠結束路由器的服務。
-func (r *Router) Shutdown() error {
-	return nil
+// Shutdown 會關閉伺服器。
+func (r *Router) Shutdown(ctx context.Context) error {
+	return r.server.Shutdown(ctx)
 }
 
 // ServeHTTP 會處理所有的請求，並分發到指定的路由。
@@ -166,74 +190,85 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	r.dispatch(w, req)
 }
 
+// call 會呼叫指定路由的處理函式。
 func (r *Router) call(route *Route, w http.ResponseWriter, req *http.Request) {
-	route.handler(w, req)
+	middlewareLength := len(route.middlewares)
+
+	var handler http.Handler
+	handler = http.HandlerFunc(route.handler)
+
+	for i := middlewareLength - 1; i >= 0; i-- {
+		handler = route.middlewares[i].Middleware(handler)
+	}
+
+	handler.ServeHTTP(w, req)
 }
 
 //
-func (r *Router) dispatch(w http.ResponseWriter, req *http.Request) {
-	var matchedRoute *Route
+func (r *Router) callNoRoute(w http.ResponseWriter, req *http.Request) {
+	middlewareLength := len(r.noRouteMiddlewares)
 
-	//
-	if route, ok := r.staticRoutes[req.URL.Path]; ok {
+	var handler http.Handler
+	handler = http.HandlerFunc(r.noRouteHandler)
+
+	for i := middlewareLength - 1; i >= 0; i-- {
+		handler = r.noRouteMiddlewares[i].Middleware(handler)
+	}
+
+	handler.ServeHTTP(w, req)
+}
+
+// disaptch 會解析接收到的請求並依照網址分發給指定的路由。
+func (r *Router) dispatch(w http.ResponseWriter, req *http.Request) {
+	url := strings.ToLower(req.URL.Path)
+
+	if route, ok := r.staticRoutes[url]; ok {
 		r.call(route, w, req)
 		return
 	}
 
-	// 將請求網址拆分成片段。
-	components := strings.Split(req.URL.Path, "/")[1:]
+	components := strings.Split(url, "/")[1:]
 	componentLength := len(components)
 
-	// 遞迴每個路由。
 	for _, route := range r.routes {
 		var matched bool
-
 		partLength := len(route.parts)
 
-		// 遞迴路由中的每個片段。
 		for index, part := range route.parts {
 			component := components[index]
-
-			if part.isStatic {
-				//
-				if part.path != component {
-					break
-				}
-			}
-
 			isLastComponent := index+1 > componentLength-1
 			isLastPart := index+1 > partLength-1
 
-			if part.isCaptureGroup {
-				value := component
-
+			switch {
+			case part.isStatic:
+				if part.path != component {
+					break
+				}
+			case part.isCaptureGroup:
 				if part.prefix != "" {
 					if !strings.HasPrefix(component, part.prefix) {
 						break
 					}
-					value = strings.TrimPrefix(component, part.prefix)
+					component = strings.TrimPrefix(component, part.prefix)
 				}
 				if part.suffix != "" {
 					if !strings.HasSuffix(component, part.suffix) {
 						break
 					}
-					value = strings.TrimSuffix(component, part.suffix)
+					component = strings.TrimSuffix(component, part.suffix)
 				}
 				if part.isRegExp {
-
-					//if part.rule.regExp == ".*" {
-					//	if isLastPart {
-					//		matched = true
-					//		break
-					//	}
-					//}
-
-					if matched, _ := regexp.MatchString(part.rule.regExp, value); !matched {
+					if part.rule.name == "*" {
+						if isLastPart {
+							matched = true
+							break
+						}
+					}
+					if matched, err := regexp.MatchString(part.rule.regExp, component); !matched || err != nil {
 						break
 					}
 				}
 			}
-
 			if !isLastPart {
 				if route.parts[index+1].isOptional {
 					if isLastComponent {
@@ -242,9 +277,6 @@ func (r *Router) dispatch(w http.ResponseWriter, req *http.Request) {
 					}
 				}
 			}
-
-			// RegExp Cache
-
 			if isLastPart && isLastComponent {
 				matched = true
 				break
@@ -252,21 +284,14 @@ func (r *Router) dispatch(w http.ResponseWriter, req *http.Request) {
 			if isLastComponent {
 				break
 			}
-
 		}
 		if matched {
-			matchedRoute = route
-			break
+			r.call(route, w, req)
+			return
 		}
 	}
 
-	//
-	if matchedRoute != nil {
-		r.call(matchedRoute, w, req)
-		return
-	}
-
-	//
+	r.callNoRoute(w, req)
 }
 
 // sort 會依照路由群組內路由的片段數來做重新排序，用以改進比對時的優先順序。

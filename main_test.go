@@ -5,7 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gorilla/context"
+	"context"
+
+	rcontext "github.com/gorilla/context"
 	"github.com/parnurzeal/gorequest"
 	"github.com/stretchr/testify/assert"
 )
@@ -56,7 +58,7 @@ func sendTestRequests(a *assert.Assertions, reqs []testRequest) {
 		}
 		a.Len(errs, 0)
 		a.Equal(body, r.Body)
-		a.Equal(resp.StatusCode, r.StatusCode)
+		a.Equal(r.StatusCode, resp.StatusCode, r.Path)
 	}
 }
 
@@ -137,7 +139,7 @@ func TestBasicRoute(t *testing.T) {
 			Body:       "",
 		},
 	})
-	r.Shutdown()
+	r.Shutdown(context.Background())
 }
 
 func TestBasicMethodRoute(t *testing.T) {
@@ -201,7 +203,7 @@ func TestBasicMethodRoute(t *testing.T) {
 			Body:       "",
 		},
 	})
-	r.Shutdown()
+	r.Shutdown(context.Background())
 }
 
 func TestParamRoute(t *testing.T) {
@@ -245,7 +247,7 @@ func TestParamRoute(t *testing.T) {
 			Body:       "",
 		},
 	})
-	r.Shutdown()
+	r.Shutdown(context.Background())
 }
 
 func TestOptionalParamRoute(t *testing.T) {
@@ -286,7 +288,7 @@ func TestOptionalParamRoute(t *testing.T) {
 			Body:       "",
 		},
 	})
-	r.Shutdown()
+	r.Shutdown(context.Background())
 }
 
 func TestOptionalParamRoute2(t *testing.T) {
@@ -346,7 +348,7 @@ func TestOptionalParamRoute2(t *testing.T) {
 			Body:       "",
 		},
 	})
-	r.Shutdown()
+	r.Shutdown(context.Background())
 }
 
 func TestRegExParamRoute(t *testing.T) {
@@ -416,7 +418,7 @@ func TestRegExParamRoute(t *testing.T) {
 			Body:       "",
 		},
 	})
-	r.Shutdown()
+	r.Shutdown(context.Background())
 }
 
 func TestCustomRegExParamRoute(t *testing.T) {
@@ -447,7 +449,7 @@ func TestCustomRegExParamRoute(t *testing.T) {
 			Body:       "",
 		},
 	})
-	r.Shutdown()
+	r.Shutdown(context.Background())
 }
 
 func TestOptionalRegExParamRoute(t *testing.T) {
@@ -503,7 +505,7 @@ func TestOptionalRegExParamRoute(t *testing.T) {
 			Body:       "",
 		},
 	})
-	r.Shutdown()
+	r.Shutdown(context.Background())
 }
 
 func TestAnyRegExParamRoute(t *testing.T) {
@@ -557,7 +559,7 @@ func TestAnyRegExParamRoute(t *testing.T) {
 			Body: "*|five:one,five",
 		},
 	})
-	r.Shutdown()
+	r.Shutdown(context.Background())
 }
 
 func TestRemixParamRoute(t *testing.T) {
@@ -649,7 +651,7 @@ func TestRemixParamRoute(t *testing.T) {
 			Body:       "",
 		},
 	})
-	r.Shutdown()
+	r.Shutdown(context.Background())
 }
 
 func TestMiddleware(t *testing.T) {
@@ -657,18 +659,18 @@ func TestMiddleware(t *testing.T) {
 	r := New()
 	middleware := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			context.Set(r, "foo1", "bar1")
+			rcontext.Set(r, "foo1", "bar1")
 			next.ServeHTTP(w, r)
 		})
 	}
 	middleware2 := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			context.Set(r, "foo2", "bar2")
+			rcontext.Set(r, "foo2", "bar2")
 			next.ServeHTTP(w, r)
 		})
 	}
 	r.Get("/", middleware, middleware2, func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(context.Get(r, "foo1").(string) + context.Get(r, "foo2").(string)))
+		w.Write([]byte(rcontext.Get(r, "foo1").(string) + rcontext.Get(r, "foo2").(string)))
 	})
 	go func() {
 		assert.NoError(r.Run())
@@ -679,7 +681,7 @@ func TestMiddleware(t *testing.T) {
 			Body: "foo1foo2",
 		},
 	})
-	r.Shutdown()
+	r.Shutdown(context.Background())
 }
 
 func TestRouteGroup(t *testing.T) {
@@ -752,30 +754,30 @@ func TestRouteGroup(t *testing.T) {
 			Body:       "",
 		},
 	})
-	r.Shutdown()
+	r.Shutdown(context.Background())
 }
 
 func TestRouteGroupMiddleware(t *testing.T) {
 	assert := assert.New(t)
 	r := New()
 	handler := func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(context.Get(r, "foo1").(string) + context.Get(r, "foo2").(string) + context.Get(r, "foo3").(string)))
+		w.Write([]byte(rcontext.Get(r, "foo1").(string) + rcontext.Get(r, "foo2").(string) + rcontext.Get(r, "foo3").(string)))
 	}
 	middleware := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			context.Set(r, "foo1", "bar1")
+			rcontext.Set(r, "foo1", "bar1")
 			next.ServeHTTP(w, r)
 		})
 	}
 	middleware2 := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			context.Set(r, "foo2", "bar2")
+			rcontext.Set(r, "foo2", "bar2")
 			next.ServeHTTP(w, r)
 		})
 	}
 	middleware3 := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			context.Set(r, "foo3", "bar3")
+			rcontext.Set(r, "foo3", "bar3")
 			next.ServeHTTP(w, r)
 		})
 	}
@@ -806,7 +808,7 @@ func TestRouteGroupMiddleware(t *testing.T) {
 			Body: "foo1foo2foo3",
 		},
 	})
-	r.Shutdown()
+	r.Shutdown(context.Background())
 }
 
 func TestGenerateRoute(t *testing.T) {
@@ -842,7 +844,7 @@ func TestGenerateRoute(t *testing.T) {
 		"five":  "five",
 		"six":   "six",
 	}))
-	r.Shutdown()
+	r.Shutdown(context.Background())
 }
 
 func TestStaticDirRoute(t *testing.T) {
@@ -905,5 +907,5 @@ func TestStaticDirRoute(t *testing.T) {
 			Body:       "",
 		},
 	})
-	r.Shutdown()
+	r.Shutdown(context.Background())
 }

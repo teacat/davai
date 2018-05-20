@@ -1,9 +1,5 @@
 package davai
 
-import (
-	"net/http"
-)
-
 // RouteGroup 是單個路由群組。
 type RouteGroup struct {
 	// router 是這個路由群組所屬的路由器。
@@ -13,7 +9,7 @@ type RouteGroup struct {
 	// routes 表示這個群組內的路由。
 	routes []*Route
 	// middlewares 是這個路由群組的共享中介軟體。
-	middlewares []func(http.Handler) http.Handler
+	middlewares []interface{}
 }
 
 // newRoute 會在目前的路由群組中依指定的方法、路徑、處理函式來插入新的路由。

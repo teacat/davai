@@ -71,7 +71,7 @@ type Route struct {
 	// handlers 是尚未分類的路由處理函式、中介軟體。
 	rawHandlers []interface{}
 	// middlewares 是這個路由的中介軟體。
-	middlewares []func(http.Handler) http.Handler
+	middlewares []middleware
 	// handler 是這個路由最主要、最終的進入點處理函式。
 	handler func(w http.ResponseWriter, r *http.Request)
 }
@@ -98,6 +98,9 @@ func (r *Route) sortHandlers() {
 		switch t := v.(type) {
 		// 中介軟體。
 		case func(http.Handler) http.Handler:
+			r.middlewares = append(r.middlewares, MiddlewareFunc(t))
+		// 進階中介軟體。
+		case middleware:
 			r.middlewares = append(r.middlewares, t)
 		// 處理函式。
 		case func(w http.ResponseWriter, r *http.Request):
@@ -191,9 +194,9 @@ func (r *Route) tearApart() {
 		r.parts = append(r.parts, &Part{
 			rule:           rule,
 			name:           varName,
-			path:           v,
-			prefix:         prefix,
-			suffix:         suffix,
+			path:           strings.ToLower(v),
+			prefix:         strings.ToLower(prefix),
+			suffix:         strings.ToLower(suffix),
 			isStatic:       isStatic,
 			isCaptureGroup: isCaptureGroup,
 			isRegExp:       isRegExp,
