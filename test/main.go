@@ -20,7 +20,7 @@ func main() {
 	//	})
 	//}
 
-	r.ServeFiles("/wow", "test/file.txt")
+	r.ServeFiles("/wow/{*:file}", "test")
 
 	//r.Get("/test/{*:file}", func(w http.ResponseWriter, r *http.Request) {
 	//	w.Write([]byte("Root!"))

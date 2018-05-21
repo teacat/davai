@@ -18,7 +18,7 @@ const (
 )
 
 // Rule 呈現了單個正規表達式規則。
-type Rule struct {
+type rule struct {
 	// Name 是這個規則的代稱。
 	name string
 	// expr 是這個規則的表達式內容。
@@ -28,9 +28,9 @@ type Rule struct {
 }
 
 // Part 呈現了路由上的其中一個片段。
-type Part struct {
+type part struct {
 	// rule 是正規表達式的規則。
-	rule *Rule
+	rule *rule
 	// name 是此路由的擷取名稱。
 	name string
 	// path 是這個片段的標準路徑。
@@ -60,7 +60,7 @@ type Route struct {
 	// method 是路由的方法。
 	method string
 	// parts 是路徑上的片段。
-	parts []*Part
+	parts []*part
 	// len 是這個路由的片段數量。
 	len int
 	// priority 是這個路由的優先度。
@@ -191,12 +191,12 @@ func (r *Route) tearApart() {
 			}
 		}
 		// 取得相對應的規則建構體。
-		var rule *Rule
+		var rule *rule
 		if ruleName != "" {
 			rule = r.routeGroup.router.rules[ruleName]
 		}
 		//
-		r.parts = append(r.parts, &Part{
+		r.parts = append(r.parts, &part{
 			rule:           rule,
 			name:           varName,
 			path:           strings.ToLower(v),

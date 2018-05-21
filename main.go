@@ -27,7 +27,7 @@ func main() {
 func New() *Router {
 	r := &Router{
 		routeNames: make(map[string]*Route),
-		rules:      make(map[string]*Rule),
+		rules:      make(map[string]*rule),
 		routes: map[string]*routes{
 			"GET": {
 				method:  "GET",
@@ -64,6 +64,7 @@ func New() *Router {
 	//
 	r.NoRoute(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(404)
+		w.Write([]byte("404 page not found"))
 	})
 	return r
 }
@@ -115,26 +116,21 @@ type Router struct {
 	// noRouteHandler 是無路由時所會呼叫的處理函式。
 	noRouteHandler func(w http.ResponseWriter, r *http.Request)
 	// rules 用來存放所有的正規表達式規則。
-	rules map[string]*Rule
+	rules map[string]*rule
 }
 
 func (r *Router) ServeFile(path string, handlers ...interface{}) *Route {
-	var serveHandler interface{}
 
-	for _, v := range handlers {
+	for k, v := range handlers {
 		switch a := v.(type) {
 		case string:
 			if _, err := os.Stat(a); err != nil {
 				panic(ErrFileNotFound)
 			}
-			serveHandler = func(w http.ResponseWriter, req *http.Request) {
+			handlers[k] = func(w http.ResponseWriter, req *http.Request) {
 				http.ServeFile(w, req, a)
 			}
 		}
-	}
-
-	if serveHandler != nil {
-		handlers[len(handlers)-1] = serveHandler
 	}
 
 	return r.routeGroups[0].Get(path, handlers...)
@@ -145,31 +141,16 @@ func (r *Router) ServeFiles(path string, handlers ...interface{}) *Route {
 	strSlice := strings.Split(path, "/{*:")
 	prefix := strSlice[0]
 
-	var serveHandler interface{}
-
 	for k, v := range handlers {
 		switch a := v.(type) {
-
 		case http.Dir:
 			handlers[k] = http.StripPrefix(prefix, http.FileServer(a))
-
 		case string:
 			if _, err := os.Stat(a); err != nil {
 				panic(ErrDirectoryNotFound)
 			}
-
-			if info, err := os.Stat(a); err == nil && info.IsDir() {
-				serveHandler = http.StripPrefix(prefix, http.FileServer(http.Dir(a)))
-			} else {
-				serveHandler = func(w http.ResponseWriter, req *http.Request) {
-					http.ServeFile(w, req, a)
-				}
-			}
+			handlers[k] = http.StripPrefix(prefix, http.FileServer(http.Dir(a)))
 		}
-	}
-
-	if serveHandler != nil {
-		handlers[len(handlers)-1] = serveHandler
 	}
 
 	return r.routeGroups[0].Get(path, handlers...)
@@ -240,7 +221,7 @@ func (r *Router) Generate(name string, params ...map[string]string) string {
 // Rule 能夠在路由器中建立一組新的正規表達式規則供在路由中使用。
 func (r *Router) Rule(name string, expr string) {
 	expr = fmt.Sprintf("^%s$", expr)
-	r.rules[name] = &Rule{
+	r.rules[name] = &rule{
 		name:   name,
 		expr:   expr,
 		regexp: regexp.MustCompile(expr),
@@ -380,9 +361,7 @@ func (r *Router) match(routes *routes, w http.ResponseWriter, req *http.Request)
 	var url string
 	url = req.URL.Path
 	if req.URL.Path != "/" {
-		fmt.Println(req.URL.Path)
 		url = strings.ToLower(strings.TrimRight(req.URL.Path, "/"))
-		fmt.Println(url)
 	}
 
 	if route, ok := routes.statics[url]; ok {
@@ -391,7 +370,6 @@ func (r *Router) match(routes *routes, w http.ResponseWriter, req *http.Request)
 	}
 
 	components := strings.Split(url, "/")[1:]
-	fmt.Println(components)
 	componentLength := len(components)
 
 	for _, route := range routes.dymanics {
