@@ -245,7 +245,7 @@ func (r *Router) NoRoute(handlers ...interface{}) {
 		switch t := v.(type) {
 		// 中介軟體。
 		case func(http.Handler) http.Handler:
-			r.noRouteMiddlewares = append(r.noRouteMiddlewares, MiddlewareFunc(t))
+			r.noRouteMiddlewares = append(r.noRouteMiddlewares, middlewareFunc(t))
 		// 進階中介軟體。
 		case middleware:
 			r.noRouteMiddlewares = append(r.noRouteMiddlewares, t)

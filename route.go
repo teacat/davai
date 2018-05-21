@@ -101,7 +101,7 @@ func (r *Route) sortHandlers() {
 		switch t := v.(type) {
 		// 中介軟體。
 		case func(http.Handler) http.Handler:
-			r.middlewares = append(r.middlewares, MiddlewareFunc(t))
+			r.middlewares = append(r.middlewares, middlewareFunc(t))
 		// 進階中介軟體。
 		case middleware:
 			r.middlewares = append(r.middlewares, t)
