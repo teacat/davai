@@ -61,6 +61,7 @@ func sendTestRequests(a *assert.Assertions, reqs []testRequest) {
 		}
 		a.Len(errs, 0)
 		a.Equal(r.Body, body)
+		a.NotNil(resp)
 		a.Equal(r.StatusCode, resp.StatusCode, r.Path)
 	}
 }
@@ -104,7 +105,7 @@ func TestBasicRoute(t *testing.T) {
 		w.Write([]byte("Seven"))
 	})
 	go func() {
-		assert.NoError(r.Run())
+		r.Run()
 	}()
 	sendTestRequests(assert, []testRequest{
 		{
@@ -142,7 +143,7 @@ func TestBasicRoute(t *testing.T) {
 		{
 			Path:       "http://localhost:8080/one/two/three/four",
 			StatusCode: statusNotFound,
-			Body:       "",
+			Body:       "404 page not found\n",
 		},
 	})
 	r.Shutdown(context.Background())
@@ -170,7 +171,7 @@ func TestBasicMethodRoute(t *testing.T) {
 		w.Write([]byte("Options"))
 	})
 	go func() {
-		assert.NoError(r.Run())
+		r.Run()
 	}()
 	sendTestRequests(assert, []testRequest{
 		{
@@ -206,7 +207,7 @@ func TestBasicMethodRoute(t *testing.T) {
 			Path:       "http://localhost:8080/post",
 			Method:     methodGet,
 			StatusCode: statusNotFound,
-			Body:       "",
+			Body:       "404 page not found\n",
 		},
 	})
 	r.Shutdown(context.Background())
@@ -228,7 +229,7 @@ func TestParamRoute(t *testing.T) {
 		w.Write([]byte(varsToString(Vars(r))))
 	})
 	go func() {
-		assert.NoError(r.Run())
+		r.Run()
 	}()
 	sendTestRequests(assert, []testRequest{
 		{
@@ -250,7 +251,7 @@ func TestParamRoute(t *testing.T) {
 		{
 			Path:       "http://localhost:8080/1/2/3/4",
 			StatusCode: statusNotFound,
-			Body:       "",
+			Body:       "404 page not found\n",
 		},
 	})
 	r.Shutdown(context.Background())
@@ -269,7 +270,7 @@ func TestOptionalParamRoute(t *testing.T) {
 		w.Write([]byte("three:" + varsToString(Vars(r))))
 	})
 	go func() {
-		assert.NoError(r.Run())
+		r.Run()
 	}()
 	sendTestRequests(assert, []testRequest{
 		{
@@ -291,7 +292,7 @@ func TestOptionalParamRoute(t *testing.T) {
 		{
 			Path:       "http://localhost:8080/1/2/3/4",
 			StatusCode: statusNotFound,
-			Body:       "",
+			Body:       "404 page not found\n",
 		},
 	})
 	r.Shutdown(context.Background())
@@ -316,13 +317,13 @@ func TestOptionalParamRoute2(t *testing.T) {
 		w.Write([]byte("three:" + varsToString(Vars(r))))
 	})
 	go func() {
-		assert.NoError(r.Run())
+		r.Run()
 	}()
 	sendTestRequests(assert, []testRequest{
 		{
 			Path:       "http://localhost:8080/",
 			StatusCode: statusNotFound,
-			Body:       "",
+			Body:       "404 page not found\n",
 		},
 		{
 			Path: "http://localhost:8080/fixed",
@@ -351,7 +352,7 @@ func TestOptionalParamRoute2(t *testing.T) {
 		{
 			Path:       "http://localhost:8080/fixed/1/fixed/2/fixed/3/fixed",
 			StatusCode: statusNotFound,
-			Body:       "",
+			Body:       "404 page not found\n",
 		},
 	})
 	r.Shutdown(context.Background())
@@ -383,7 +384,7 @@ func TestRegExParamRoute(t *testing.T) {
 		w.Write([]byte("a|three:" + varsToString(Vars(r))))
 	})
 	go func() {
-		assert.NoError(r.Run())
+		r.Run()
 	}()
 	sendTestRequests(assert, []testRequest{
 		{
@@ -417,12 +418,12 @@ func TestRegExParamRoute(t *testing.T) {
 		{
 			Path:       "http://localhost:8080/測試",
 			StatusCode: statusNotFound,
-			Body:       "",
+			Body:       "404 page not found\n",
 		},
 		{
 			Path:       "http://localhost:8080/a/2",
 			StatusCode: statusNotFound,
-			Body:       "",
+			Body:       "404 page not found\n",
 		},
 	})
 	r.Shutdown(context.Background())
@@ -441,7 +442,7 @@ func TestOptionalRegExParamRoute(t *testing.T) {
 		w.Write([]byte("three:" + varsToString(Vars(r))))
 	})
 	go func() {
-		assert.NoError(r.Run())
+		r.Run()
 	}()
 	sendTestRequests(assert, []testRequest{
 		{
@@ -463,22 +464,22 @@ func TestOptionalRegExParamRoute(t *testing.T) {
 		{
 			Path:       "http://localhost:8080/a",
 			StatusCode: statusNotFound,
-			Body:       "",
+			Body:       "404 page not found\n",
 		},
 		{
 			Path:       "http://localhost:8080/a/2",
 			StatusCode: statusNotFound,
-			Body:       "",
+			Body:       "404 page not found\n",
 		},
 		{
 			Path:       "http://localhost:8080/a/b/3",
 			StatusCode: statusNotFound,
-			Body:       "",
+			Body:       "404 page not found\n",
 		},
 		{
 			Path:       "http://localhost:8080/a/b/c/d",
 			StatusCode: statusNotFound,
-			Body:       "",
+			Body:       "404 page not found\n",
 		},
 	})
 	r.Shutdown(context.Background())
@@ -503,7 +504,7 @@ func TestAnyRegExParamRoute(t *testing.T) {
 		w.Write([]byte("*|five:" + varsToString(Vars(r))))
 	})
 	go func() {
-		assert.NoError(r.Run())
+		r.Run()
 	}()
 	sendTestRequests(assert, []testRequest{
 		{
@@ -558,7 +559,7 @@ func TestPrefixSuffixRoute(t *testing.T) {
 		w.Write([]byte(varsToString(Vars(r))))
 	})
 	go func() {
-		assert.NoError(r.Run())
+		r.Run()
 	}()
 	sendTestRequests(assert, []testRequest{
 		{
@@ -580,27 +581,27 @@ func TestPrefixSuffixRoute(t *testing.T) {
 		{
 			Path:       "http://localhost:8080/1",
 			StatusCode: statusNotFound,
-			Body:       "",
+			Body:       "404 page not found\n",
 		},
 		{
 			Path:       "http://localhost:8080/.sub",
 			StatusCode: statusNotFound,
-			Body:       "",
+			Body:       "404 page not found\n",
 		},
 		{
 			Path:       "http://localhost:8080/pre..suf",
 			StatusCode: statusNotFound,
-			Body:       "",
+			Body:       "404 page not found\n",
 		},
 		{
 			Path:       "http://localhost:8080/pre..suf/pre.1.suf",
 			StatusCode: statusNotFound,
-			Body:       "",
+			Body:       "404 page not found\n",
 		},
 		{
 			Path:       "http://localhost:8080/pre..suf/pre..suf",
 			StatusCode: statusNotFound,
-			Body:       "",
+			Body:       "404 page not found\n",
 		},
 	})
 	r.Shutdown(context.Background())
@@ -625,7 +626,7 @@ func TestOptionalPrefixSuffixRoute(t *testing.T) {
 		w.Write([]byte(varsToString(Vars(r))))
 	})
 	go func() {
-		assert.NoError(r.Run())
+		r.Run()
 	}()
 	sendTestRequests(assert, []testRequest{
 		{
@@ -667,22 +668,22 @@ func TestOptionalPrefixSuffixRoute(t *testing.T) {
 		{
 			Path:       "http://localhost:8080/1",
 			StatusCode: statusNotFound,
-			Body:       "",
+			Body:       "404 page not found\n",
 		},
 		{
 			Path:       "http://localhost:8080/1/2",
 			StatusCode: statusNotFound,
-			Body:       "",
+			Body:       "404 page not found\n",
 		},
 		{
 			Path:       "http://localhost:8080/pre.1",
 			StatusCode: statusNotFound,
-			Body:       "",
+			Body:       "404 page not found\n",
 		},
 		{
 			Path:       "http://localhost:8080/pre.1/pre.2.suf",
 			StatusCode: statusNotFound,
-			Body:       "",
+			Body:       "404 page not found\n",
 		},
 	})
 	r.Shutdown(context.Background())
@@ -705,7 +706,7 @@ func TestPrefixSuffixRegExRoute(t *testing.T) {
 		w.Write([]byte(varsToString(Vars(r))))
 	})
 	go func() {
-		assert.NoError(r.Run())
+		r.Run()
 	}()
 	sendTestRequests(assert, []testRequest{
 		{
@@ -735,27 +736,27 @@ func TestPrefixSuffixRegExRoute(t *testing.T) {
 		{
 			Path:       "http://localhost:8080/1",
 			StatusCode: statusNotFound,
-			Body:       "",
+			Body:       "404 page not found\n",
 		},
 		{
 			Path:       "http://localhost:8080/1.sub",
 			StatusCode: statusNotFound,
-			Body:       "",
+			Body:       "404 page not found\n",
 		},
 		{
 			Path:       "http://localhost:8080/pre.1.suf",
 			StatusCode: statusNotFound,
-			Body:       "",
+			Body:       "404 page not found\n",
 		},
 		{
 			Path:       "http://localhost:8080/foo..bar",
 			StatusCode: statusNotFound,
-			Body:       "",
+			Body:       "404 page not found\n",
 		},
 		{
 			Path:       "http://localhost:8080/foo.1.bar",
 			StatusCode: statusNotFound,
-			Body:       "",
+			Body:       "404 page not found\n",
 		},
 	})
 	r.Shutdown(context.Background())
@@ -776,7 +777,7 @@ func TestLookbehindRoute(t *testing.T) {
 		w.Write([]byte(varsToString(Vars(r))))
 	})
 	go func() {
-		assert.NoError(r.Run())
+		r.Run()
 	}()
 	sendTestRequests(assert, []testRequest{
 		{
@@ -798,17 +799,17 @@ func TestLookbehindRoute(t *testing.T) {
 		{
 			Path:       "http://localhost:8080/detail",
 			StatusCode: statusNotFound,
-			Body:       "",
+			Body:       "404 page not found\n",
 		},
 		{
 			Path:       "http://localhost:8080/user.htmli",
 			StatusCode: statusNotFound,
-			Body:       "",
+			Body:       "404 page not found\n",
 		},
 		{
 			Path:       "http://localhost:8080/user.htm",
 			StatusCode: statusNotFound,
-			Body:       "",
+			Body:       "404 page not found\n",
 		},
 	})
 	r.Shutdown(context.Background())
@@ -832,7 +833,7 @@ func TestMiddleware(t *testing.T) {
 		w.Write([]byte(rcontext.Get(r, "foo1").(string) + rcontext.Get(r, "foo2").(string)))
 	})
 	go func() {
-		assert.NoError(r.Run())
+		r.Run()
 	}()
 	sendTestRequests(assert, []testRequest{
 		{
@@ -910,12 +911,12 @@ func TestRouteGroup(t *testing.T) {
 		{
 			Path:       "http://localhost:8080/v1/user",
 			StatusCode: statusNotFound,
-			Body:       "",
+			Body:       "404 page not found\n",
 		},
 		{
 			Path:       "http://localhost:8080/v1/post/123/456",
 			StatusCode: statusNotFound,
-			Body:       "",
+			Body:       "404 page not found\n",
 		},
 	})
 	r.Shutdown(context.Background())
@@ -952,7 +953,7 @@ func TestRouteGroupMiddleware(t *testing.T) {
 		v1.Get("/login", middleware3, handler)
 	}
 	go func() {
-		assert.NoError(r.Run())
+		r.Run()
 	}()
 	sendTestRequests(assert, []testRequest{
 		{
@@ -1006,7 +1007,7 @@ func TestGlobalMiddleware(t *testing.T) {
 		v1.Get("/bar", middleware3, handler)
 	}
 	go func() {
-		assert.NoError(r.Run())
+		r.Run()
 	}()
 	sendTestRequests(assert, []testRequest{
 		{
@@ -1031,7 +1032,7 @@ func TestGenerateRoute(t *testing.T) {
 	r.Get("/one/two/{three}/{four}/{five?}", func(w http.ResponseWriter, r *http.Request) {}).Name("Five")
 	r.Get("/one/two/{three}/{four}/{five?}/{s:six}", func(w http.ResponseWriter, r *http.Request) {}).Name("Six")
 	go func() {
-		assert.NoError(r.Run())
+		r.Run()
 	}()
 	sendTestRequests(assert, []testRequest{
 		{
@@ -1081,7 +1082,65 @@ func TestStaticDirRoute(t *testing.T) {
 	r.Get("/static/{*:file}", http.StripPrefix("/static", http.FileServer(http.Dir("test"))))
 	r.Get("/prefix/{*:file}", http.StripPrefix("/prefix", http.FileServer(http.Dir("."))))
 	go func() {
-		assert.NoError(r.Run())
+		r.Run()
+	}()
+	sendTestRequests(assert, []testRequest{
+		{
+			Path: "http://localhost:8080/file.txt",
+			Body: "This is file.txt.",
+		},
+		{
+			Path: "http://localhost:8080/directory/file.txt",
+			Body: "This is directory/file.txt.",
+		},
+		{
+			Path: "http://localhost:8080/static/file.txt",
+			Body: "This is file.txt.",
+		},
+		{
+			Path: "http://localhost:8080/static/directory/file.txt",
+			Body: "This is directory/file.txt.",
+		},
+		{
+			Path: "http://localhost:8080/prefix/test/file.txt",
+			Body: "This is file.txt.",
+		},
+		{
+			Path: "http://localhost:8080/prefix/test/directory/file.txt",
+			Body: "This is directory/file.txt.",
+		},
+		{
+			Path: "http://localhost:8080",
+			Body: "<pre>\n<a href=\"directory/\">directory/</a>\n<a href=\"file.txt\">file.txt</a>\n<a href=\"main.go\">main.go</a>\n</pre>\n",
+		},
+		{
+			Path: "http://localhost:8080/static",
+			Body: "<pre>\n<a href=\"directory/\">directory/</a>\n<a href=\"file.txt\">file.txt</a>\n<a href=\"main.go\">main.go</a>\n</pre>\n",
+		},
+		{
+			Path: "http://localhost:8080/prefix/test",
+			Body: "<pre>\n<a href=\"directory/\">directory/</a>\n<a href=\"file.txt\">file.txt</a>\n<a href=\"main.go\">main.go</a>\n</pre>\n",
+		},
+		{
+			Path:       "http://localhost:8080/wow.txt",
+			StatusCode: statusNotFound,
+			Body:       "404 page not found\n",
+		},
+	})
+	r.Shutdown(context.Background())
+}
+
+func TestServeFilesDirRoute(t *testing.T) {
+	assert := assert.New(t)
+	r := New()
+	f, err := filepath.Abs(".")
+	assert.NoError(err)
+	assert.NoError(os.Chdir(f))
+	r.ServeFiles("/{*:file}", http.Dir("test"))
+	r.ServeFiles("/static/{*:file}", http.Dir("test"))
+	r.ServeFiles("/prefix/{*:file}", http.Dir("."))
+	go func() {
+		r.Run()
 	}()
 	sendTestRequests(assert, []testRequest{
 		{
@@ -1135,11 +1194,11 @@ func TestServeFilesRoute(t *testing.T) {
 	f, err := filepath.Abs(".")
 	assert.NoError(err)
 	assert.NoError(os.Chdir(f))
-	r.ServeFiles("/{*:file}", http.Dir("test"))
-	r.ServeFiles("/static/{*:file}", http.Dir("test"))
-	r.ServeFiles("/prefix/{*:file}", http.Dir("."))
+	r.ServeFiles("/{*:file}", "test")
+	r.ServeFiles("/static/{*:file}", "test")
+	r.ServeFiles("/prefix/{*:file}", ".")
 	go func() {
-		assert.NoError(r.Run())
+		r.Run()
 	}()
 	sendTestRequests(assert, []testRequest{
 		{
@@ -1177,6 +1236,35 @@ func TestServeFilesRoute(t *testing.T) {
 		{
 			Path: "http://localhost:8080/prefix/test",
 			Body: "<pre>\n<a href=\"directory/\">directory/</a>\n<a href=\"file.txt\">file.txt</a>\n<a href=\"main.go\">main.go</a>\n</pre>\n",
+		},
+		{
+			Path:       "http://localhost:8080/wow.txt",
+			StatusCode: statusNotFound,
+			Body:       "404 page not found\n",
+		},
+	})
+	r.Shutdown(context.Background())
+}
+
+func TestServeFileRoute(t *testing.T) {
+	assert := assert.New(t)
+	r := New()
+	f, err := filepath.Abs(".")
+	assert.NoError(err)
+	assert.NoError(os.Chdir(f))
+	r.ServeFile("/one", "test/file.txt")
+	r.ServeFile("/one/two", "test/directory/file.txt")
+	go func() {
+		r.Run()
+	}()
+	sendTestRequests(assert, []testRequest{
+		{
+			Path: "http://localhost:8080/one",
+			Body: "This is file.txt.",
+		},
+		{
+			Path: "http://localhost:8080/one/two",
+			Body: "This is directory/file.txt.",
 		},
 		{
 			Path:       "http://localhost:8080/wow.txt",

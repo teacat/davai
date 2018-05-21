@@ -64,7 +64,7 @@ func New() *Router {
 	//
 	r.NoRoute(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(404)
-		w.Write([]byte("404 page not found"))
+		w.Write([]byte("404 page not found\n"))
 	})
 	return r
 }
@@ -363,7 +363,7 @@ func (r *Router) match(routes *routes, w http.ResponseWriter, req *http.Request)
 	if req.URL.Path != "/" {
 		url = strings.ToLower(strings.TrimRight(req.URL.Path, "/"))
 	}
-
+	fmt.Println(routes.statics)
 	if route, ok := routes.statics[url]; ok {
 		r.call(route, w, req)
 		return true
@@ -431,14 +431,16 @@ func (r *Router) match(routes *routes, w http.ResponseWriter, req *http.Request)
 			}
 			if !isLastPart {
 				if component != "" {
-					if route.parts[index+1].isOptional {
+					nextPart := route.parts[index+1]
+					isNextPartLast := index+1 == partLength-1
+					if nextPart.isOptional {
 						if isLastComponent {
 							matched = true
 							break
 						}
 					}
-					if route.parts[index+1].rule.name == "*" {
-						if index+1 == partLength-1 {
+					if part.isRegExp {
+						if part.rule.name == "*" {
 							if vars == nil {
 								vars = make(map[string]string)
 							}
@@ -446,8 +448,8 @@ func (r *Router) match(routes *routes, w http.ResponseWriter, req *http.Request)
 
 							matched = true
 							break partScan
-						}
 
+						}
 					}
 				}
 			}

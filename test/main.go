@@ -1,8 +1,23 @@
 package main
 
 import (
+	"net/http"
+	"sort"
+	"strings"
+
 	davai "github.com/teacat/go-davai"
 )
+
+func varsToString(vars map[string]string) string {
+	var slice []string
+	for _, v := range vars {
+		slice = append(slice, v)
+	}
+	sort.Slice(slice, func(i, j int) bool {
+		return slice[i] < slice[j]
+	})
+	return strings.Join(slice, ",")
+}
 
 func main() {
 	r := davai.New()
@@ -20,7 +35,20 @@ func main() {
 	//	})
 	//}
 
-	r.ServeFiles("/wow/{*:file}", "test")
+	//r.ServeFiles("/wow/{*:file}", "test")
+
+	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Root"))
+	})
+	r.Get("/{one}", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(varsToString(davai.Vars(r))))
+	})
+	r.Get("/{one}/{two}", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(varsToString(davai.Vars(r))))
+	})
+	r.Get("/{one}/{two}/{three}", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(varsToString(davai.Vars(r))))
+	})
 
 	//r.Get("/test/{*:file}", func(w http.ResponseWriter, r *http.Request) {
 	//	w.Write([]byte("Root!"))

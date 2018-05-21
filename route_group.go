@@ -24,9 +24,12 @@ func (r *RouteGroup) newRoute(method string, path string, handlers ...interface{
 	for _, v := range handlers {
 		rawHandlers = append(rawHandlers, v)
 	}
+	if path != "/" {
+		path = strings.TrimRight(r.prefix+path, "/")
+	}
 	route := &Route{
 		routeGroup:  r,
-		path:        strings.TrimRight(r.prefix+path, "/"),
+		path:        path,
 		rawHandlers: rawHandlers,
 		method:      method,
 	}
