@@ -2,6 +2,7 @@ package davai
 
 import (
 	"net/http"
+	"regexp"
 	"strings"
 )
 
@@ -20,8 +21,10 @@ const (
 type Rule struct {
 	// Name 是這個規則的代稱。
 	name string
-	// RegExp 是這個規則的正規表達式。
-	regExp string
+	// expr 是這個規則的表達式內容。
+	expr string
+	// regexp 是編譯後的正規表達式。
+	regexp *regexp.Regexp
 }
 
 // Part 呈現了路由上的其中一個片段。
@@ -205,7 +208,11 @@ func (r *Route) tearApart() {
 		//
 		r.addPriority(priorityPath)
 		//
-		if prefix != "" || suffix != "" {
+		if prefix != "" {
+			r.addPriority(priorityText)
+		}
+		//
+		if suffix != "" {
 			r.addPriority(priorityText)
 		}
 		//

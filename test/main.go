@@ -1,45 +1,49 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
-	"time"
 
 	davai "github.com/teacat/go-davai"
 )
 
 func main() {
 	r := davai.New()
-	MyMiddleware := func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// 從接收到請求的時候就開始記錄時間。
-			start := time.Now()
-			// ...
-			// 呼叫 `net.ServeHTTP` 來呼叫下一個中介軟體或者是處理函式。
-			// 如果不這麼做的話則會中斷繼續。
-			next.ServeHTTP(w, r)
-			// 取得本次請求的總費時。
-			latency := time.Since(start)
-			fmt.Println(latency)
-		})
-	}
+	//MyMiddleware := func(next http.Handler) http.Handler {
+	//	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	//		// 從接收到請求的時候就開始記錄時間。
+	//		start := time.Now()
+	//		// ...
+	//		// 呼叫 `net.ServeHTTP` 來呼叫下一個中介軟體或者是處理函式。
+	//		// 如果不這麼做的話則會中斷繼續。
+	//		next.ServeHTTP(w, r)
+	//		// 取得本次請求的總費時。
+	//		latency := time.Since(start)
+	//		fmt.Println(latency)
+	//	})
+	//}
 
-	r.Get("/", MyMiddleware, func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Root!"))
+	r.Get("/{s:one}", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("/{s:one}"))
 	})
-	r.Get("/{*:path}", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Root!"))
-	})
-	r.Get("/user", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Root!"))
-	})
-	r.Get("/user/admin", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Root!"))
-	})
-	r.Get("/user/{s:name}/profile", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Printf("%+v", davai.Vars(r))
-		w.Write([]byte("Root!"))
-	})
+
+
+	// r.Get("/", MyMiddleware, func(w http.ResponseWriter, r *http.Request) {
+	// 	w.Write([]byte("Root!"))
+	// })
+	// r.Get("/{*:path}", func(w http.ResponseWriter, r *http.Request) {
+	// 	w.Write([]byte("Root!"))
+	// })
+	// r.Get("/user", func(w http.ResponseWriter, r *http.Request) {
+	// 	w.Write([]byte("Root!"))
+	// })
+	// r.Get("/user/admin", func(w http.ResponseWriter, r *http.Request) {
+	// 	w.Write([]byte("Root!"))
+	// })
+	// r.Get("/user/{s:name}/profile", func(w http.ResponseWriter, r *http.Request) {
+	// 	fmt.Printf("%+v", davai.Vars(r))
+	// 	w.Write([]byte("Root!"))
+	// })
+
 	/*
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte("Root!"))

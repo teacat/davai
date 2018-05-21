@@ -161,10 +161,12 @@ func (r *Router) Generate(name string, params ...map[string]string) string {
 }
 
 // Rule 能夠在路由器中建立一組新的正規表達式規則供在路由中使用。
-func (r *Router) Rule(name string, regexp string) {
+func (r *Router) Rule(name string, expr string) {
+	expr = fmt.Sprintf("^%s$", expr)
 	r.rules[name] = &Rule{
 		name:   name,
-		regExp: regexp,
+		expr:   expr,
+		regexp: regexp.MustCompile(expr),
 	}
 }
 
@@ -230,6 +232,12 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 }
 
 //
+//
+//
+//
+//
+//
+///
 func (r *RouteGroup) Use(middlewares ...interface{}) {
 
 }
@@ -248,7 +256,7 @@ func (r *Router) call(route *Route, w http.ResponseWriter, req *http.Request) {
 	handler.ServeHTTP(w, req)
 }
 
-//
+// callNoRoute 會串連中介軟體並且呼叫無路由的函式。
 func (r *Router) callNoRoute(w http.ResponseWriter, req *http.Request) {
 	middlewareLength := len(r.noRouteMiddlewares)
 
@@ -281,9 +289,9 @@ func (r *Router) match(routes *routes, w http.ResponseWriter, req *http.Request)
 	for _, route := range routes.dymanics {
 		var matched bool
 		var vars map[string]string
-
 		partLength := len(route.parts)
 
+	partScan:
 		for index, part := range route.parts {
 			component := components[index]
 			isLastComponent := index+1 > componentLength-1
@@ -292,30 +300,42 @@ func (r *Router) match(routes *routes, w http.ResponseWriter, req *http.Request)
 			switch {
 			case part.isStatic:
 				if part.path != component {
-					break
+					break partScan
 				}
 			case part.isCaptureGroup:
 				if part.prefix != "" {
 					if !strings.HasPrefix(component, part.prefix) {
-						break
+						break partScan
 					}
 					component = strings.TrimPrefix(component, part.prefix)
 				}
 				if part.suffix != "" {
 					if !strings.HasSuffix(component, part.suffix) {
-						break
+						break partScan
 					}
 					component = strings.TrimSuffix(component, part.suffix)
+				}
+				if part.prefix != "" || part.suffix != "" {
+					if !part.isOptional && !part.isRegExp && component == "" {
+						break partScan
+					}
 				}
 				if part.isRegExp {
 					if part.rule.name == "*" {
 						if isLastPart {
+							if vars == nil {
+								vars = make(map[string]string)
+							}
+							vars[part.name] = strings.Join(components[index:], "/")
+
 							matched = true
-							break
+							break partScan
 						}
 					}
-					if matched, err := regexp.MatchString(part.rule.regExp, component); !matched || err != nil {
-						break
+					if (part.isOptional && component != "") || !part.isOptional {
+						if !part.rule.regexp.MatchString(component) {
+							break partScan
+						}
 					}
 				}
 				if vars == nil {
@@ -324,10 +344,12 @@ func (r *Router) match(routes *routes, w http.ResponseWriter, req *http.Request)
 				vars[part.name] = component
 			}
 			if !isLastPart {
-				if route.parts[index+1].isOptional {
-					if isLastComponent {
-						matched = true
-						break
+				if component != "" {
+					if route.parts[index+1].isOptional {
+						if isLastComponent {
+							matched = true
+							break
+						}
 					}
 				}
 			}

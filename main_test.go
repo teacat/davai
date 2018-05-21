@@ -2,6 +2,7 @@ package davai
 
 import (
 	"net/http"
+	"sort"
 	"strings"
 	"testing"
 
@@ -57,7 +58,7 @@ func sendTestRequests(a *assert.Assertions, reqs []testRequest) {
 			resp, body, errs = request.Patch(r.Path).End()
 		}
 		a.Len(errs, 0)
-		a.Equal(body, r.Body)
+		a.Equal(r.Body, body)
 		a.Equal(r.StatusCode, resp.StatusCode, r.Path)
 	}
 }
@@ -67,6 +68,9 @@ func varsToString(vars map[string]string) string {
 	for _, v := range vars {
 		slice = append(slice, v)
 	}
+	sort.Slice(slice, func(i, j int) bool {
+		return slice[i] < slice[j]
+	})
 	return strings.Join(slice, ",")
 }
 
@@ -230,19 +234,19 @@ func TestParamRoute(t *testing.T) {
 			Body: "Root",
 		},
 		{
-			Path: "http://localhost:8080/one",
-			Body: "one",
+			Path: "http://localhost:8080/1",
+			Body: "1",
 		},
 		{
-			Path: "http://localhost:8080/one/two",
-			Body: "one,two",
+			Path: "http://localhost:8080/1/2",
+			Body: "1,2",
 		},
 		{
-			Path: "http://localhost:8080/one/two/three",
-			Body: "one,two,three",
+			Path: "http://localhost:8080/1/2/3",
+			Body: "1,2,3",
 		},
 		{
-			Path:       "http://localhost:8080/one/two/three/four",
+			Path:       "http://localhost:8080/1/2/3/4",
 			StatusCode: statusNotFound,
 			Body:       "",
 		},
@@ -271,19 +275,19 @@ func TestOptionalParamRoute(t *testing.T) {
 			Body: "one:",
 		},
 		{
-			Path: "http://localhost:8080/one",
-			Body: "two:one",
+			Path: "http://localhost:8080/1",
+			Body: "two:1",
 		},
 		{
-			Path: "http://localhost:8080/one/two",
-			Body: "three:one,two",
+			Path: "http://localhost:8080/1/2",
+			Body: "three:1,2",
 		},
 		{
-			Path: "http://localhost:8080/one/two/three",
-			Body: "three:one,two,three",
+			Path: "http://localhost:8080/1/2/3",
+			Body: "three:1,2,3",
 		},
 		{
-			Path:       "http://localhost:8080/one/two/three/four",
+			Path:       "http://localhost:8080/1/2/3/4",
 			StatusCode: statusNotFound,
 			Body:       "",
 		},
@@ -323,27 +327,27 @@ func TestOptionalParamRoute2(t *testing.T) {
 			Body: "one:",
 		},
 		{
-			Path: "http://localhost:8080/fixed/one",
-			Body: "one:one",
+			Path: "http://localhost:8080/fixed/1",
+			Body: "one:1",
 		},
 		{
-			Path: "http://localhost:8080/fixed/one/fixed",
-			Body: "two:one",
+			Path: "http://localhost:8080/fixed/1/fixed",
+			Body: "two:1",
 		},
 		{
-			Path: "http://localhost:8080/fixed/one/fixed/two",
-			Body: "two:one,two",
+			Path: "http://localhost:8080/fixed/1/fixed/2",
+			Body: "two:1,2",
 		},
 		{
-			Path: "http://localhost:8080/fixed/one/fixed/two/fixed",
-			Body: "three:one,two",
+			Path: "http://localhost:8080/fixed/1/fixed/2/fixed",
+			Body: "three:1,2",
 		},
 		{
-			Path: "http://localhost:8080/fixed/one/fixed/two/fixed/three",
-			Body: "three:one,two,three",
+			Path: "http://localhost:8080/fixed/1/fixed/2/fixed/3",
+			Body: "three:1,2,3",
 		},
 		{
-			Path:       "http://localhost:8080/fixed/one/fixed/two/fixed/three/fixed",
+			Path:       "http://localhost:8080/fixed/1/fixed/2/fixed/3/fixed",
 			StatusCode: statusNotFound,
 			Body:       "",
 		},
@@ -354,26 +358,27 @@ func TestOptionalParamRoute2(t *testing.T) {
 func TestRegExParamRoute(t *testing.T) {
 	assert := assert.New(t)
 	r := New()
+	r.Rule("a", "[A-Za-z]+")
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Root"))
 	})
 	r.Get("/{i:one}", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("i|one:" + varsToString(Vars(r))))
 	})
-	r.Get("/{s:one}", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("s|one:" + varsToString(Vars(r))))
+	r.Get("/{a:one}", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("a|one:" + varsToString(Vars(r))))
 	})
 	r.Get("/{i:one}/{i:two}", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("i|two:" + varsToString(Vars(r))))
 	})
-	r.Get("/{i:one}/{s:two}", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("s|two:" + varsToString(Vars(r))))
+	r.Get("/{i:one}/{a:two}", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("a|two:" + varsToString(Vars(r))))
 	})
-	r.Get("/{i:one}/{s:two}/{i:three}", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/{i:one}/{a:two}/{i:three}", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("i|three:" + varsToString(Vars(r))))
 	})
-	r.Get("/{i:one}/{s:two}/{s:three}", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("s|three:" + varsToString(Vars(r))))
+	r.Get("/{i:one}/{a:two}/{a:three}", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("a|three:" + varsToString(Vars(r))))
 	})
 	go func() {
 		assert.NoError(r.Run())
@@ -388,24 +393,24 @@ func TestRegExParamRoute(t *testing.T) {
 			Body: "i|one:1",
 		},
 		{
-			Path: "http://localhost:8080/one",
-			Body: "s|one:one",
+			Path: "http://localhost:8080/a",
+			Body: "a|one:a",
 		},
 		{
 			Path: "http://localhost:8080/1/2",
 			Body: "i|two:1,2",
 		},
 		{
-			Path: "http://localhost:8080/1/two",
-			Body: "s|two:1,two",
+			Path: "http://localhost:8080/1/b",
+			Body: "a|two:1,b",
 		},
 		{
-			Path: "http://localhost:8080/1/two/3",
-			Body: "i|three:1,two,3",
+			Path: "http://localhost:8080/1/b/3",
+			Body: "i|three:1,3,b",
 		},
 		{
-			Path: "http://localhost:8080/1/two/three",
-			Body: "s|three:1,two,three",
+			Path: "http://localhost:8080/1/b/c",
+			Body: "a|three:1,b,c",
 		},
 		{
 			Path:       "http://localhost:8080/測試",
@@ -413,38 +418,7 @@ func TestRegExParamRoute(t *testing.T) {
 			Body:       "",
 		},
 		{
-			Path:       "http://localhost:8080/one/2",
-			StatusCode: statusNotFound,
-			Body:       "",
-		},
-	})
-	r.Shutdown(context.Background())
-}
-
-func TestCustomRegExParamRoute(t *testing.T) {
-	assert := assert.New(t)
-	r := New()
-	r.Rule("a", "[0-9A-Za-z]++")
-	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Root"))
-	})
-	r.Get("/{a:one}", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("a|one:" + varsToString(Vars(r))))
-	})
-	go func() {
-		assert.NoError(r.Run())
-	}()
-	sendTestRequests(assert, []testRequest{
-		{
-			Path: "http://localhost:8080/",
-			Body: "Root",
-		},
-		{
-			Path: "http://localhost:8080/one",
-			Body: "a|one:one",
-		},
-		{
-			Path:       "http://localhost:8080/1",
+			Path:       "http://localhost:8080/a/2",
 			StatusCode: statusNotFound,
 			Body:       "",
 		},
@@ -455,13 +429,13 @@ func TestCustomRegExParamRoute(t *testing.T) {
 func TestOptionalRegExParamRoute(t *testing.T) {
 	assert := assert.New(t)
 	r := New()
-	r.Get("/{s:one?}", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/{i:one?}", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("one:" + varsToString(Vars(r))))
 	})
-	r.Get("/{s:one}/{s:two?}", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/{i:one}/{i:two?}", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("two:" + varsToString(Vars(r))))
 	})
-	r.Get("/{s:one}/{s:two}/{s:three?}", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/{i:one}/{i:two}/{i:three?}", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("three:" + varsToString(Vars(r))))
 	})
 	go func() {
@@ -473,34 +447,34 @@ func TestOptionalRegExParamRoute(t *testing.T) {
 			Body: "one:",
 		},
 		{
-			Path: "http://localhost:8080/one",
-			Body: "two:one",
+			Path: "http://localhost:8080/1",
+			Body: "two:1",
 		},
 		{
-			Path: "http://localhost:8080/one/two",
-			Body: "three:one,two",
+			Path: "http://localhost:8080/1/2",
+			Body: "three:1,2",
 		},
 		{
-			Path: "http://localhost:8080/one/two/three",
-			Body: "three:one,two,three",
+			Path: "http://localhost:8080/1/2/3",
+			Body: "three:1,2,3",
 		},
 		{
-			Path:       "http://localhost:8080/1",
+			Path:       "http://localhost:8080/a",
 			StatusCode: statusNotFound,
 			Body:       "",
 		},
 		{
-			Path:       "http://localhost:8080/one/2",
+			Path:       "http://localhost:8080/a/2",
 			StatusCode: statusNotFound,
 			Body:       "",
 		},
 		{
-			Path:       "http://localhost:8080/one/two/3",
+			Path:       "http://localhost:8080/a/b/3",
 			StatusCode: statusNotFound,
 			Body:       "",
 		},
 		{
-			Path:       "http://localhost:8080/one/two/three/four",
+			Path:       "http://localhost:8080/a/b/c/d",
 			StatusCode: statusNotFound,
 			Body:       "",
 		},
@@ -540,7 +514,7 @@ func TestAnyRegExParamRoute(t *testing.T) {
 		},
 		{
 			Path: "http://localhost:8080/two",
-			Body: "two",
+			Body: "two:",
 		},
 		{
 			Path: "http://localhost:8080/one/two/three",
@@ -555,33 +529,30 @@ func TestAnyRegExParamRoute(t *testing.T) {
 			Body: "*|five:one",
 		},
 		{
-			Path: "http://localhost:8080/one/two/three/four/five",
-			Body: "*|five:one,five",
+			Path: "http://localhost:8080/1/two/three/four/5",
+			Body: "*|five:1,5",
+		},
+		{
+			Path: "http://localhost:8080/1/two/three/four/5/6",
+			Body: "*|five:1,5/6",
 		},
 	})
 	r.Shutdown(context.Background())
 }
 
-func TestRemixParamRoute(t *testing.T) {
+func TestPrefixSuffixRoute(t *testing.T) {
 	assert := assert.New(t)
 	r := New()
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Root"))
 	})
-	r.Get("/{type}.json", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/{one}.sub", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(varsToString(Vars(r))))
 	})
-	r.Get("/{type}/{id}.json", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/pre.{one}.suf", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(varsToString(Vars(r))))
 	})
-	r.Get("/{type}/{id}-{anotherID}.json", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(varsToString(Vars(r))))
-	})
-	r.Get("/{type}/{id}-{anotherID}-{andAnotherID?}.json", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(varsToString(Vars(r))))
-	})
-	r.Rule("e", "(?:.html)?")
-	r.Get("/{type}/{id}/detail{e:extension}", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/pre.{one}.suf/pre.{two}.suf", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(varsToString(Vars(r))))
 	})
 	go func() {
@@ -593,60 +564,39 @@ func TestRemixParamRoute(t *testing.T) {
 			Body: "Root",
 		},
 		{
-			Path: "http://localhost:8080/type.json",
-			Body: "type",
+			Path: "http://localhost:8080/1.sub",
+			Body: "1",
 		},
 		{
-			Path: "http://localhost:8080/type/id.json",
-			Body: "type,id",
+			Path: "http://localhost:8080/pre.1.suf",
+			Body: "1",
 		},
 		{
-			Path: "http://localhost:8080/type/id-anotherID.json",
-			Body: "type,id,anotherID",
+			Path: "http://localhost:8080/pre.1.suf/pre.2.suf",
+			Body: "1,2",
 		},
 		{
-			Path: "http://localhost:8080/type/id-anotherID-andAnotherID.json",
-			Body: "type,id,anotherID,andAnotherID",
-		},
-		{
-			Path: "http://localhost:8080/type/id-anotherID-.json",
-			Body: "type,id,anotherID",
-		},
-		{
-			Path: "http://localhost:8080/type/id/detail",
-			Body: "type,id",
-		},
-		{
-			Path: "http://localhost:8080/type/id/detail.html",
-			Body: "type,id,.html",
-		},
-		{
-			Path:       "http://localhost:8080/type",
+			Path:       "http://localhost:8080/1",
 			StatusCode: statusNotFound,
 			Body:       "",
 		},
 		{
-			Path:       "http://localhost:8080/type.html",
+			Path:       "http://localhost:8080/.sub",
 			StatusCode: statusNotFound,
 			Body:       "",
 		},
 		{
-			Path:       "http://localhost:8080/type/id.html",
+			Path:       "http://localhost:8080/pre..suf",
 			StatusCode: statusNotFound,
 			Body:       "",
 		},
 		{
-			Path:       "http://localhost:8080/type/id-.json",
+			Path:       "http://localhost:8080/pre..suf/pre.1.suf",
 			StatusCode: statusNotFound,
 			Body:       "",
 		},
 		{
-			Path:       "http://localhost:8080/type/id-anotherID-",
-			StatusCode: statusNotFound,
-			Body:       "",
-		},
-		{
-			Path:       "http://localhost:8080/type/id/detail.htm",
+			Path:       "http://localhost:8080/pre..suf/pre..suf",
 			StatusCode: statusNotFound,
 			Body:       "",
 		},
@@ -654,6 +604,213 @@ func TestRemixParamRoute(t *testing.T) {
 	r.Shutdown(context.Background())
 }
 
+func TestOptionalPrefixSuffixRoute(t *testing.T) {
+	assert := assert.New(t)
+	r := New()
+	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Root"))
+	})
+	r.Get("/{one?}.sub", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(varsToString(Vars(r))))
+	})
+	r.Get("/pre.{one?}.suf", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(varsToString(Vars(r))))
+	})
+	r.Get("/pre.{one?}.suf/pre.{two?}.suf", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(varsToString(Vars(r))))
+	})
+	r.Get("/pre.{one}.suf/pre.{two}.suf/pre.{three}.suf/pre.{four?}.suf", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(varsToString(Vars(r))))
+	})
+	go func() {
+		assert.NoError(r.Run())
+	}()
+	sendTestRequests(assert, []testRequest{
+		{
+			Path: "http://localhost:8080/",
+			Body: "Root",
+		},
+		{
+			Path: "http://localhost:8080/1.sub",
+			Body: "1",
+		},
+		{
+			Path: "http://localhost:8080/.sub",
+			Body: "",
+		},
+		{
+			Path: "http://localhost:8080/pre.1.suf",
+			Body: "1",
+		},
+		{
+			Path: "http://localhost:8080/pre..suf",
+			Body: "",
+		},
+		{
+			Path: "http://localhost:8080/pre.1.suf/pre.2.suf",
+			Body: "1,2",
+		},
+		{
+			Path: "http://localhost:8080/pre..suf/pre..suf",
+			Body: ",",
+		},
+		{
+			Path: "http://localhost:8080/pre.1.suf/pre.2.suf/pre.3.suf/pre..suf",
+			Body: ",1,2,3",
+		},
+		{
+			Path: "http://localhost:8080/pre.1.suf/pre.2.suf/pre.3.suf/pre.4.suf",
+			Body: "1,2,3,4",
+		},
+		{
+			Path:       "http://localhost:8080/1",
+			StatusCode: statusNotFound,
+			Body:       "",
+		},
+		{
+			Path:       "http://localhost:8080/1/2",
+			StatusCode: statusNotFound,
+			Body:       "",
+		},
+		{
+			Path:       "http://localhost:8080/pre.1",
+			StatusCode: statusNotFound,
+			Body:       "",
+		},
+		{
+			Path:       "http://localhost:8080/pre.1/pre.2.suf",
+			StatusCode: statusNotFound,
+			Body:       "",
+		},
+	})
+	r.Shutdown(context.Background())
+}
+
+func TestPrefixSuffixRegExRoute(t *testing.T) {
+	assert := assert.New(t)
+	r := New()
+	r.Rule("a", "[A-Za-z]+")
+	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Root"))
+	})
+	r.Get("/{a:one?}.sub", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(varsToString(Vars(r))))
+	})
+	r.Get("/pre.{a:one?}.suf", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(varsToString(Vars(r))))
+	})
+	r.Get("/foo.{a:one}.bar", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(varsToString(Vars(r))))
+	})
+	go func() {
+		assert.NoError(r.Run())
+	}()
+	sendTestRequests(assert, []testRequest{
+		{
+			Path: "http://localhost:8080/",
+			Body: "Root",
+		},
+		{
+			Path: "http://localhost:8080/a.sub",
+			Body: "a",
+		},
+		{
+			Path: "http://localhost:8080/.sub",
+			Body: "",
+		},
+		{
+			Path: "http://localhost:8080/pre.a.suf",
+			Body: "a",
+		},
+		{
+			Path: "http://localhost:8080/pre..suf",
+			Body: "",
+		},
+		{
+			Path: "http://localhost:8080/foo.a.bar",
+			Body: "a",
+		},
+		{
+			Path:       "http://localhost:8080/1",
+			StatusCode: statusNotFound,
+			Body:       "",
+		},
+		{
+			Path:       "http://localhost:8080/1.sub",
+			StatusCode: statusNotFound,
+			Body:       "",
+		},
+		{
+			Path:       "http://localhost:8080/pre.1.suf",
+			StatusCode: statusNotFound,
+			Body:       "",
+		},
+		{
+			Path:       "http://localhost:8080/foo..bar",
+			StatusCode: statusNotFound,
+			Body:       "",
+		},
+		{
+			Path:       "http://localhost:8080/foo.1.bar",
+			StatusCode: statusNotFound,
+			Body:       "",
+		},
+	})
+	r.Shutdown(context.Background())
+}
+
+func TestLookbehindRoute(t *testing.T) {
+	assert := assert.New(t)
+	r := New()
+	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Root"))
+	})
+	r.Rule("e", "(?:.html)")
+	r.Get("/detail{e:one}", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(varsToString(Vars(r))))
+	})
+	r.Rule("u", "(?:.html)?")
+	r.Get("/user{u:one}", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(varsToString(Vars(r))))
+	})
+	go func() {
+		assert.NoError(r.Run())
+	}()
+	sendTestRequests(assert, []testRequest{
+		{
+			Path: "http://localhost:8080/",
+			Body: "Root",
+		},
+		{
+			Path: "http://localhost:8080/detail.html",
+			Body: ".html",
+		},
+		{
+			Path: "http://localhost:8080/user",
+			Body: "",
+		},
+		{
+			Path: "http://localhost:8080/user.html",
+			Body: ".html",
+		},
+		{
+			Path:       "http://localhost:8080/detail",
+			StatusCode: statusNotFound,
+			Body:       "",
+		},
+		{
+			Path:       "http://localhost:8080/user.htmli",
+			StatusCode: statusNotFound,
+			Body:       "",
+		},
+		{
+			Path:       "http://localhost:8080/user.htm",
+			StatusCode: statusNotFound,
+			Body:       "",
+		},
+	})
+	r.Shutdown(context.Background())
+}
 func TestMiddleware(t *testing.T) {
 	assert := assert.New(t)
 	r := New()
@@ -678,7 +835,7 @@ func TestMiddleware(t *testing.T) {
 	sendTestRequests(assert, []testRequest{
 		{
 			Path: "http://localhost:8080/",
-			Body: "foo1foo2",
+			Body: "bar1bar2",
 		},
 	})
 	r.Shutdown(context.Background())
@@ -692,15 +849,15 @@ func TestRouteGroup(t *testing.T) {
 	}
 	v1 := r.Group("/v1")
 	{
-		v1.Post("/user/{id}", handler)
-		v1.Post("/post/{title?}", handler)
-		v1.Post("/login", handler)
+		v1.Get("/user/{id}", handler)
+		v1.Get("/post/{title?}", handler)
+		v1.Get("/login", handler)
 	}
 	v2 := r.Group("/v2")
 	{
-		v2.Post("/user/{id}", handler)
-		v2.Post("/post/{title?}", handler)
-		v2.Post("/login", handler)
+		v2.Get("/user/{id}", handler)
+		v2.Get("/post/{title?}", handler)
+		v2.Get("/login", handler)
 	}
 	go func() {
 		assert.NoError(r.Run())
@@ -783,9 +940,9 @@ func TestRouteGroupMiddleware(t *testing.T) {
 	}
 	v1 := r.Group("/v1", middleware, middleware2)
 	{
-		v1.Post("/user/{id}", middleware3, handler)
-		v1.Post("/post/{title?}", middleware3, handler)
-		v1.Post("/login", middleware3, handler)
+		v1.Get("/user/{id}", middleware3, handler)
+		v1.Get("/post/{title?}", middleware3, handler)
+		v1.Get("/login", middleware3, handler)
 	}
 	go func() {
 		assert.NoError(r.Run())
@@ -793,19 +950,19 @@ func TestRouteGroupMiddleware(t *testing.T) {
 	sendTestRequests(assert, []testRequest{
 		{
 			Path: "http://localhost:8080/v1/user/123",
-			Body: "foo1foo2foo3",
+			Body: "bar1bar2bar3",
 		},
 		{
 			Path: "http://localhost:8080/v1/post",
-			Body: "foo1foo2foo3",
+			Body: "bar1bar2bar3",
 		},
 		{
 			Path: "http://localhost:8080/v1/post/1234",
-			Body: "foo1foo2foo3",
+			Body: "bar1bar2bar3",
 		},
 		{
 			Path: "http://localhost:8080/v1/login",
-			Body: "foo1foo2foo3",
+			Body: "bar1bar2bar3",
 		},
 	})
 	r.Shutdown(context.Background())
@@ -826,23 +983,27 @@ func TestGenerateRoute(t *testing.T) {
 	assert.Equal("/one", r.Generate("One"))
 	assert.Equal("/one/two", r.Generate("Two"))
 	assert.Equal("/one/two", r.Generate("Three"))
-	assert.Equal("/one/two/three", r.Generate("Three", map[string]string{
-		"three": "three",
+	assert.Equal("/one/two/1", r.Generate("Three", map[string]string{
+		"three": "1",
 	}))
-	assert.Equal("/one/two/three/four", r.Generate("Four", map[string]string{
-		"three": "three",
-		"four":  "four",
+	assert.Equal("/one/two/1/2", r.Generate("Four", map[string]string{
+		"three": "1",
+		"four":  "2",
 	}))
-	assert.Equal("/one/two/three/four/five", r.Generate("Five", map[string]string{
-		"three": "three",
-		"four":  "four",
-		"five":  "five",
+	assert.Equal("/one/two/1/2", r.Generate("Five", map[string]string{
+		"three": "1",
+		"four":  "2",
 	}))
-	assert.Equal("/one/two/three/four/five/six", r.Generate("Six", map[string]string{
-		"three": "three",
-		"four":  "four",
-		"five":  "five",
-		"six":   "six",
+	assert.Equal("/one/two/1/2/3", r.Generate("Five", map[string]string{
+		"three": "1",
+		"four":  "2",
+		"five":  "3",
+	}))
+	assert.Equal("/one/two/1/2/3/4", r.Generate("Six", map[string]string{
+		"three": "1",
+		"four":  "2",
+		"five":  "3",
+		"six":   "4",
 	}))
 	r.Shutdown(context.Background())
 }
