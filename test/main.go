@@ -1,8 +1,6 @@
 package main
 
 import (
-	"net/http"
-
 	davai "github.com/teacat/go-davai"
 )
 
@@ -22,10 +20,17 @@ func main() {
 	//	})
 	//}
 
-	r.Get("/{s:one}", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("/{s:one}"))
-	})
+	r.ServeFiles("/wow", "test/file.txt")
 
+	//r.Get("/test/{*:file}", func(w http.ResponseWriter, r *http.Request) {
+	//	w.Write([]byte("Root!"))
+	//})
+	//r.Get("/test/{*:file}", func(w http.ResponseWriter, r *http.Request) {
+	//	w.Write([]byte("Root!"))
+	//})
+	//
+	//r.Get("/static/{*:file}", http.StripPrefix("/static", http.FileServer(http.Dir("test/"))))
+	//r.Get("/{*:file}", http.FileServer(http.Dir("/Users/YamiOdymel/go/src/github.com/teacat/go-davai/test/")))
 
 	// r.Get("/", MyMiddleware, func(w http.ResponseWriter, r *http.Request) {
 	// 	w.Write([]byte("Root!"))

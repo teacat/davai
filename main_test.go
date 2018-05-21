@@ -2,6 +2,8 @@ package davai
 
 import (
 	"net/http"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
@@ -849,22 +851,28 @@ func TestRouteGroup(t *testing.T) {
 	}
 	v1 := r.Group("/v1")
 	{
+		v1.Get("/", handler)
 		v1.Get("/user/{id}", handler)
 		v1.Get("/post/{title?}", handler)
 		v1.Get("/login", handler)
 	}
 	v2 := r.Group("/v2")
 	{
+		v2.Get("/", handler)
 		v2.Get("/user/{id}", handler)
 		v2.Get("/post/{title?}", handler)
 		v2.Get("/login", handler)
 	}
 	go func() {
-		assert.NoError(r.Run())
+		r.Run()
 	}()
 	sendTestRequests(assert, []testRequest{
 		{
 			Path: "http://localhost:8080/v1/user/123",
+			Body: "OK",
+		},
+		{
+			Path: "http://localhost:8080/v1",
 			Body: "OK",
 		},
 		{
@@ -884,6 +892,10 @@ func TestRouteGroup(t *testing.T) {
 			Body: "OK",
 		},
 		{
+			Path: "http://localhost:8080/v2",
+			Body: "OK",
+		},
+		{
 			Path: "http://localhost:8080/v2/post",
 			Body: "OK",
 		},
@@ -894,11 +906,6 @@ func TestRouteGroup(t *testing.T) {
 		{
 			Path: "http://localhost:8080/v2/login",
 			Body: "OK",
-		},
-		{
-			Path:       "http://localhost:8080/v1",
-			StatusCode: statusNotFound,
-			Body:       "",
 		},
 		{
 			Path:       "http://localhost:8080/v1/user",
@@ -968,6 +975,52 @@ func TestRouteGroupMiddleware(t *testing.T) {
 	r.Shutdown(context.Background())
 }
 
+func TestGlobalMiddleware(t *testing.T) {
+	assert := assert.New(t)
+	r := New()
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(rcontext.Get(r, "foo1").(string) + rcontext.Get(r, "foo2").(string) + rcontext.Get(r, "foo3").(string)))
+	}
+	middleware := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			rcontext.Set(r, "foo1", "bar1")
+			next.ServeHTTP(w, r)
+		})
+	}
+	middleware2 := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			rcontext.Set(r, "foo2", "bar2")
+			next.ServeHTTP(w, r)
+		})
+	}
+	middleware3 := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			rcontext.Set(r, "foo3", "bar3")
+			next.ServeHTTP(w, r)
+		})
+	}
+	r.Use(middleware)
+	r.Get("/", middleware2, middleware3, handler)
+	v1 := r.Group("/foo", middleware2)
+	{
+		v1.Get("/bar", middleware3, handler)
+	}
+	go func() {
+		assert.NoError(r.Run())
+	}()
+	sendTestRequests(assert, []testRequest{
+		{
+			Path: "http://localhost:8080/",
+			Body: "bar1bar2bar3",
+		},
+		{
+			Path: "http://localhost:8080/foo/bar",
+			Body: "bar1bar2bar3",
+		},
+	})
+	r.Shutdown(context.Background())
+}
+
 func TestGenerateRoute(t *testing.T) {
 	assert := assert.New(t)
 	r := New()
@@ -980,6 +1033,12 @@ func TestGenerateRoute(t *testing.T) {
 	go func() {
 		assert.NoError(r.Run())
 	}()
+	sendTestRequests(assert, []testRequest{
+		{
+			Path: "http://localhost:8080/one",
+			Body: "",
+		},
+	})
 	assert.Equal("/one", r.Generate("One"))
 	assert.Equal("/one/two", r.Generate("Two"))
 	assert.Equal("/one/two", r.Generate("Three"))
@@ -989,6 +1048,10 @@ func TestGenerateRoute(t *testing.T) {
 	assert.Equal("/one/two/1/2", r.Generate("Four", map[string]string{
 		"three": "1",
 		"four":  "2",
+	}))
+	assert.Equal("/one/two", r.Generate("Five"))
+	assert.Equal("/one/two/1", r.Generate("Five", map[string]string{
+		"three": "1",
 	}))
 	assert.Equal("/one/two/1/2", r.Generate("Five", map[string]string{
 		"three": "1",
@@ -1011,9 +1074,12 @@ func TestGenerateRoute(t *testing.T) {
 func TestStaticDirRoute(t *testing.T) {
 	assert := assert.New(t)
 	r := New()
-	r.Get("/{*:file}", http.StripPrefix("/test/", http.FileServer(http.Dir("test"))))
-	r.Get("/static/{*:file}", http.StripPrefix("/test/", http.FileServer(http.Dir("test"))))
-	r.Get("/prefix/{*:file}", http.FileServer(http.Dir("test")))
+	f, err := filepath.Abs(".")
+	assert.NoError(err)
+	assert.NoError(os.Chdir(f))
+	r.Get("/{*:file}", http.FileServer(http.Dir("test")))
+	r.Get("/static/{*:file}", http.StripPrefix("/static", http.FileServer(http.Dir("test"))))
+	r.Get("/prefix/{*:file}", http.StripPrefix("/prefix", http.FileServer(http.Dir("."))))
 	go func() {
 		assert.NoError(r.Run())
 	}()
@@ -1043,29 +1109,79 @@ func TestStaticDirRoute(t *testing.T) {
 			Body: "This is directory/file.txt.",
 		},
 		{
-			Path:       "http://localhost:8080/",
-			StatusCode: statusNotFound,
-			Body:       "",
+			Path: "http://localhost:8080",
+			Body: "<pre>\n<a href=\"directory/\">directory/</a>\n<a href=\"file.txt\">file.txt</a>\n<a href=\"main.go\">main.go</a>\n</pre>\n",
 		},
 		{
-			Path:       "http://localhost:8080/static",
-			StatusCode: statusNotFound,
-			Body:       "",
+			Path: "http://localhost:8080/static",
+			Body: "<pre>\n<a href=\"directory/\">directory/</a>\n<a href=\"file.txt\">file.txt</a>\n<a href=\"main.go\">main.go</a>\n</pre>\n",
 		},
 		{
-			Path:       "http://localhost:8080/prefix",
-			StatusCode: statusNotFound,
-			Body:       "",
-		},
-		{
-			Path:       "http://localhost:8080/prefix/test",
-			StatusCode: statusNotFound,
-			Body:       "",
+			Path: "http://localhost:8080/prefix/test",
+			Body: "<pre>\n<a href=\"directory/\">directory/</a>\n<a href=\"file.txt\">file.txt</a>\n<a href=\"main.go\">main.go</a>\n</pre>\n",
 		},
 		{
 			Path:       "http://localhost:8080/wow.txt",
 			StatusCode: statusNotFound,
-			Body:       "",
+			Body:       "404 page not found\n",
+		},
+	})
+	r.Shutdown(context.Background())
+}
+
+func TestServeFilesRoute(t *testing.T) {
+	assert := assert.New(t)
+	r := New()
+	f, err := filepath.Abs(".")
+	assert.NoError(err)
+	assert.NoError(os.Chdir(f))
+	r.ServeFiles("/{*:file}", http.Dir("test"))
+	r.ServeFiles("/static/{*:file}", http.Dir("test"))
+	r.ServeFiles("/prefix/{*:file}", http.Dir("."))
+	go func() {
+		assert.NoError(r.Run())
+	}()
+	sendTestRequests(assert, []testRequest{
+		{
+			Path: "http://localhost:8080/file.txt",
+			Body: "This is file.txt.",
+		},
+		{
+			Path: "http://localhost:8080/directory/file.txt",
+			Body: "This is directory/file.txt.",
+		},
+		{
+			Path: "http://localhost:8080/static/file.txt",
+			Body: "This is file.txt.",
+		},
+		{
+			Path: "http://localhost:8080/static/directory/file.txt",
+			Body: "This is directory/file.txt.",
+		},
+		{
+			Path: "http://localhost:8080/prefix/test/file.txt",
+			Body: "This is file.txt.",
+		},
+		{
+			Path: "http://localhost:8080/prefix/test/directory/file.txt",
+			Body: "This is directory/file.txt.",
+		},
+		{
+			Path: "http://localhost:8080",
+			Body: "<pre>\n<a href=\"directory/\">directory/</a>\n<a href=\"file.txt\">file.txt</a>\n<a href=\"main.go\">main.go</a>\n</pre>\n",
+		},
+		{
+			Path: "http://localhost:8080/static",
+			Body: "<pre>\n<a href=\"directory/\">directory/</a>\n<a href=\"file.txt\">file.txt</a>\n<a href=\"main.go\">main.go</a>\n</pre>\n",
+		},
+		{
+			Path: "http://localhost:8080/prefix/test",
+			Body: "<pre>\n<a href=\"directory/\">directory/</a>\n<a href=\"file.txt\">file.txt</a>\n<a href=\"main.go\">main.go</a>\n</pre>\n",
+		},
+		{
+			Path:       "http://localhost:8080/wow.txt",
+			StatusCode: statusNotFound,
+			Body:       "404 page not found\n",
 		},
 	})
 	r.Shutdown(context.Background())

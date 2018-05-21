@@ -1,5 +1,7 @@
 package davai
 
+import "strings"
+
 // RouteGroup 是單個路由群組。
 type RouteGroup struct {
 	// router 是這個路由群組所屬的路由器。
@@ -24,7 +26,7 @@ func (r *RouteGroup) newRoute(method string, path string, handlers ...interface{
 	}
 	route := &Route{
 		routeGroup:  r,
-		path:        r.prefix + path,
+		path:        strings.TrimRight(r.prefix+path, "/"),
 		rawHandlers: rawHandlers,
 		method:      method,
 	}

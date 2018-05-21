@@ -76,7 +76,7 @@ type Route struct {
 	// middlewares 是這個路由的中介軟體。
 	middlewares []middleware
 	// handler 是這個路由最主要、最終的進入點處理函式。
-	handler func(w http.ResponseWriter, r *http.Request)
+	handler http.Handler
 }
 
 // Name 能夠替此路由命名供稍後以反向路由的方式產生路徑。
@@ -107,6 +107,8 @@ func (r *Route) sortHandlers() {
 			r.middlewares = append(r.middlewares, t)
 		// 處理函式。
 		case func(w http.ResponseWriter, r *http.Request):
+			r.handler = http.HandlerFunc(t)
+		case http.Handler:
 			r.handler = t
 		}
 	}

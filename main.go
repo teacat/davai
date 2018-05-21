@@ -2,11 +2,21 @@ package davai
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"regexp"
 	"sort"
 	"strings"
+)
+
+var (
+	ErrRouteNotFound     = errors.New("davai: the route was not found")
+	ErrHandlerNotFound   = errors.New("davai: the handler of the route was not found, it might be a nil pointer")
+	ErrVarNotFound       = errors.New("davai: cannot generate the route if the required parameter has no matched variable")
+	ErrFileNotFound      = errors.New("davai: the file to serve was not found")
+	ErrDirectoryNotFound = errors.New("davai: the directory to serve was not found")
 )
 
 func main() {
@@ -62,6 +72,13 @@ const (
 	varsKey = "davaiVars"
 )
 
+// 重新檢查 empty 的 vars 該不該納入 map
+//
+//
+//
+//
+//
+
 // Vars 能夠將接收到的路由變數轉換成本地的 `map[string]string` 格式來供存取使用。
 func Vars(r *http.Request) map[string]string {
 	if rv := contextGet(r, varsKey); rv != nil {
@@ -99,6 +116,63 @@ type Router struct {
 	noRouteHandler func(w http.ResponseWriter, r *http.Request)
 	// rules 用來存放所有的正規表達式規則。
 	rules map[string]*Rule
+}
+
+func (r *Router) ServeFile(path string, handlers ...interface{}) *Route {
+	var serveHandler interface{}
+
+	for _, v := range handlers {
+		switch a := v.(type) {
+		case string:
+			if _, err := os.Stat(a); err != nil {
+				panic(ErrFileNotFound)
+			}
+			serveHandler = func(w http.ResponseWriter, req *http.Request) {
+				http.ServeFile(w, req, a)
+			}
+		}
+	}
+
+	if serveHandler != nil {
+		handlers[len(handlers)-1] = serveHandler
+	}
+
+	return r.routeGroups[0].Get(path, handlers...)
+}
+
+//
+func (r *Router) ServeFiles(path string, handlers ...interface{}) *Route {
+	strSlice := strings.Split(path, "/{*:")
+	prefix := strSlice[0]
+
+	var serveHandler interface{}
+
+	for k, v := range handlers {
+		switch a := v.(type) {
+
+		case http.Dir:
+			handlers[k] = http.StripPrefix(prefix, http.FileServer(a))
+
+		case string:
+			if _, err := os.Stat(a); err != nil {
+				panic(ErrDirectoryNotFound)
+			}
+
+			if info, err := os.Stat(a); err == nil && info.IsDir() {
+				serveHandler = http.StripPrefix(prefix, http.FileServer(http.Dir(a)))
+			} else {
+				serveHandler = func(w http.ResponseWriter, req *http.Request) {
+					http.ServeFile(w, req, a)
+				}
+			}
+		}
+	}
+
+	if serveHandler != nil {
+		handlers[len(handlers)-1] = serveHandler
+	}
+
+	return r.routeGroups[0].Get(path, handlers...)
 }
 
 // Get 會依照 GET 方法建立相對應的路由。
@@ -141,6 +215,9 @@ func (r *Router) Generate(name string, params ...map[string]string) string {
 	var path string
 	if len(params) == 0 {
 		for _, part := range v.parts {
+			if part.name != "" {
+				return path
+			}
 			path += fmt.Sprintf("/%s", part.path)
 		}
 		return path
@@ -238,16 +315,40 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 //
 //
 ///
-func (r *RouteGroup) Use(middlewares ...interface{}) {
+func (r *Router) Use(middlewares ...interface{}) {
 
 }
 
+// Strict 能夠更改路由器的嚴格設定，當設置為 `true` 的時候會嚴格比對路由的結尾斜線，預設為 `false`。
+// func (r *Router) Strict(value bool) *Router {
+//
+// }
+//
+// CaseSensitive 會更改路由器的大小寫敏感設定，當設置為 `true` 的時候 `/foo` 不會和 `/FOO` 相符，預設為 `false`。
+// func (r *Router) CaseSensitive(value bool) *Router {
+//
+// }
+//
+// RegexCache 能啟用路由器的正規表達式快取，如果路由中有正規表達式規則且內容通常是固定的，那麼開啟此功能可以增進效能。
+// func (r *Router) RegexCache(value bool) *Router {
+//
+// }
+//
+// SkipClean 會略過網址清理，當設置為 `true` 的時候並不會移除網址多餘的雙斜線，這讓你能用上類似 `/fetch/http://www.example.com/` 的路由。
+// func (r *Router) SkipClean(value bool) *Router {
+//
+// }
+
 // call 會呼叫指定路由的處理函式。
 func (r *Router) call(route *Route, w http.ResponseWriter, req *http.Request) {
+	if route.handler == nil {
+		panic(ErrHandlerNotFound)
+	}
+
 	middlewareLength := len(route.middlewares)
 
 	var handler http.Handler
-	handler = http.HandlerFunc(route.handler)
+	handler = route.handler
 
 	for i := middlewareLength - 1; i >= 0; i-- {
 		handler = route.middlewares[i].Middleware(handler)
@@ -276,7 +377,13 @@ func (r *Router) callNoRoute(w http.ResponseWriter, req *http.Request) {
 // 移除尾部 「/」
 // 移除尾部 「/」
 func (r *Router) match(routes *routes, w http.ResponseWriter, req *http.Request) bool {
-	url := strings.ToLower(req.URL.Path)
+	var url string
+	url = req.URL.Path
+	if req.URL.Path != "/" {
+		fmt.Println(req.URL.Path)
+		url = strings.ToLower(strings.TrimRight(req.URL.Path, "/"))
+		fmt.Println(url)
+	}
 
 	if route, ok := routes.statics[url]; ok {
 		r.call(route, w, req)
@@ -284,6 +391,7 @@ func (r *Router) match(routes *routes, w http.ResponseWriter, req *http.Request)
 	}
 
 	components := strings.Split(url, "/")[1:]
+	fmt.Println(components)
 	componentLength := len(components)
 
 	for _, route := range routes.dymanics {
@@ -350,6 +458,18 @@ func (r *Router) match(routes *routes, w http.ResponseWriter, req *http.Request)
 							matched = true
 							break
 						}
+					}
+					if route.parts[index+1].rule.name == "*" {
+						if index+1 == partLength-1 {
+							if vars == nil {
+								vars = make(map[string]string)
+							}
+							vars[part.name] = strings.Join(components[index:], "/")
+
+							matched = true
+							break partScan
+						}
+
 					}
 				}
 			}

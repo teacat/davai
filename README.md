@@ -284,6 +284,13 @@ func main() {
 ## 靜態檔案與目錄
 
 ```go
+func main() {
+	d := davai.New()
+	// 將多個中介軟體作為全域用途並在所有路由中執行。
+	r.Get("/{*:file}", http.FileServer(http.Dir("test/")))
+	// ...
+	http.Handle("/", d)
+}
 ```
 
 ## 無路由
