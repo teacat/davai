@@ -152,6 +152,7 @@ func TestBasicRoute(t *testing.T) {
 		},
 	})
 	r.Shutdown(context.Background())
+	<-time.After(time.Millisecond * 200)
 }
 
 func TestBasicMethodRoute(t *testing.T) {
@@ -220,6 +221,7 @@ func TestBasicMethodRoute(t *testing.T) {
 		},
 	})
 	r.Shutdown(context.Background())
+	<-time.After(time.Millisecond * 200)
 }
 
 func TestParamRoute(t *testing.T) {
@@ -268,6 +270,7 @@ func TestParamRoute(t *testing.T) {
 		},
 	})
 	r.Shutdown(context.Background())
+	<-time.After(time.Millisecond * 200)
 }
 
 func TestOptionalParamRoute(t *testing.T) {
@@ -313,6 +316,7 @@ func TestOptionalParamRoute(t *testing.T) {
 		},
 	})
 	r.Shutdown(context.Background())
+	<-time.After(time.Millisecond * 200)
 }
 
 func TestOptionalParamRoute2(t *testing.T) {
@@ -377,6 +381,7 @@ func TestOptionalParamRoute2(t *testing.T) {
 		},
 	})
 	r.Shutdown(context.Background())
+	<-time.After(time.Millisecond * 200)
 }
 
 func TestRegExParamRoute(t *testing.T) {
@@ -452,6 +457,7 @@ func TestRegExParamRoute(t *testing.T) {
 		},
 	})
 	r.Shutdown(context.Background())
+	<-time.After(time.Millisecond * 200)
 }
 
 func TestOptionalRegExParamRoute(t *testing.T) {
@@ -512,6 +518,7 @@ func TestOptionalRegExParamRoute(t *testing.T) {
 		},
 	})
 	r.Shutdown(context.Background())
+	<-time.After(time.Millisecond * 200)
 }
 
 func TestAnyRegExParamRoute(t *testing.T) {
@@ -574,6 +581,7 @@ func TestAnyRegExParamRoute(t *testing.T) {
 		},
 	})
 	r.Shutdown(context.Background())
+	<-time.After(time.Millisecond * 200)
 }
 
 func TestPrefixSuffixRoute(t *testing.T) {
@@ -642,6 +650,7 @@ func TestPrefixSuffixRoute(t *testing.T) {
 		},
 	})
 	r.Shutdown(context.Background())
+	<-time.After(time.Millisecond * 200)
 }
 
 func TestOptionalPrefixSuffixRoute(t *testing.T) {
@@ -728,6 +737,7 @@ func TestOptionalPrefixSuffixRoute(t *testing.T) {
 		},
 	})
 	r.Shutdown(context.Background())
+	<-time.After(time.Millisecond * 200)
 }
 
 func TestPrefixSuffixRegExRoute(t *testing.T) {
@@ -805,6 +815,7 @@ func TestPrefixSuffixRegExRoute(t *testing.T) {
 		},
 	})
 	r.Shutdown(context.Background())
+	<-time.After(time.Millisecond * 200)
 }
 
 func TestLookbehindRoute(t *testing.T) {
@@ -862,6 +873,7 @@ func TestLookbehindRoute(t *testing.T) {
 		},
 	})
 	r.Shutdown(context.Background())
+	<-time.After(time.Millisecond * 200)
 }
 func TestMiddleware(t *testing.T) {
 	assert := assert.New(t)
@@ -895,6 +907,7 @@ func TestMiddleware(t *testing.T) {
 		},
 	})
 	r.Shutdown(context.Background())
+	<-time.After(time.Millisecond * 200)
 }
 
 func TestRouteGroup(t *testing.T) {
@@ -977,6 +990,7 @@ func TestRouteGroup(t *testing.T) {
 		},
 	})
 	r.Shutdown(context.Background())
+	<-time.After(time.Millisecond * 200)
 }
 
 func TestRouteGroupMiddleware(t *testing.T) {
@@ -1035,6 +1049,7 @@ func TestRouteGroupMiddleware(t *testing.T) {
 		},
 	})
 	r.Shutdown(context.Background())
+	<-time.After(time.Millisecond * 200)
 }
 
 func TestGlobalMiddleware(t *testing.T) {
@@ -1085,6 +1100,7 @@ func TestGlobalMiddleware(t *testing.T) {
 		},
 	})
 	r.Shutdown(context.Background())
+	<-time.After(time.Millisecond * 200)
 }
 
 func TestGenerateRoute(t *testing.T) {
@@ -1139,6 +1155,7 @@ func TestGenerateRoute(t *testing.T) {
 		"six":   "4",
 	}))
 	r.Shutdown(context.Background())
+	<-time.After(time.Millisecond * 200)
 }
 
 func TestStaticDirRoute(t *testing.T) {
@@ -1237,6 +1254,7 @@ func TestStaticDirRoute(t *testing.T) {
 		},
 	})
 	r.Shutdown(context.Background())
+	<-time.After(time.Millisecond * 200)
 }
 
 func TestServeFilesDirRoute(t *testing.T) {
@@ -1335,6 +1353,7 @@ func TestServeFilesDirRoute(t *testing.T) {
 		},
 	})
 	r.Shutdown(context.Background())
+	<-time.After(time.Millisecond * 200)
 }
 
 func TestServeFilesRoute(t *testing.T) {
@@ -1462,6 +1481,7 @@ func TestServeFilesRoute(t *testing.T) {
 		},
 	})
 	r.Shutdown(context.Background())
+	<-time.After(time.Millisecond * 200)
 }
 
 func TestServeFileRoute(t *testing.T) {
@@ -1512,6 +1532,7 @@ func TestServeFileRoute(t *testing.T) {
 		},
 	})
 	r.Shutdown(context.Background())
+	<-time.After(time.Millisecond * 200)
 }
 
 func TestServeFilesAndStaticRoute(t *testing.T) {
@@ -1629,6 +1650,7 @@ func TestServeFilesAndStaticRoute(t *testing.T) {
 		},
 	})
 	r.Shutdown(context.Background())
+	<-time.After(time.Millisecond * 200)
 }
 
 func TestTrailingSlashesRoute(t *testing.T) {
@@ -1677,4 +1699,5 @@ func TestTrailingSlashesRoute(t *testing.T) {
 		},
 	})
 	r.Shutdown(context.Background())
+	<-time.After(time.Millisecond * 200)
 }
