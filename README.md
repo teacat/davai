@@ -1,4 +1,4 @@
-# Davai [![GoDoc](https://godoc.org/github.com/teacat/go-davai?status.svg)](https://godoc.org/github.com/teacat/go-davai) [![Coverage Status](https://coveralls.io/repos/github/teacat/go-davai/badge.svg?branch=master)](https://coveralls.io/github/teacat/go-davai?branch=master) [![Build Status](https://travis-ci.org/teacat/go-davai.svg?branch=master)](https://travis-ci.org/teacat/go-davai)
+# Davai [![GoDoc](https://godoc.org/github.com/teacat/go-davai?status.svg)](https://godoc.org/github.com/teacat/go-davai) [![Coverage Status](https://coveralls.io/repos/github/teacat/go-davai/badge.svg?branch=master)](https://coveralls.io/github/teacat/go-davai?branch=master) [![Build Status](https://travis-ci.org/teacat/go-davai.svg?branch=master)](https://travis-ci.org/teacat/go-davai) [![Go Report Card](https://goreportcard.com/badge/github.com/teacat/go-davai)](https://goreportcard.com/report/github.com/teacat/go-davai)
 
 基於 `net/http` 的 Golang 基本 HTTP 路由，這個套件試圖提供最核心且具動態路由功能的路由器。
 

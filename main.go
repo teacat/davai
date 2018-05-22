@@ -71,14 +71,8 @@ const (
 	varsKey = "davaiVars"
 )
 
-// 重新檢查 empty 的 vars 該不該納入 map
-//
-//
-//
-//
-//
-
 // Vars 能夠將接收到的路由變數轉換成本地的 `map[string]string` 格式來供存取使用。
+// 如果路由中有選擇性路由，且請求網址中省略了該變數，取得到的變數結果則會是空字串而非 `nil` 值。
 func Vars(r *http.Request) map[string]string {
 	if rv := contextGet(r, varsKey); rv != nil {
 		return rv.(map[string]string)
@@ -323,8 +317,15 @@ func (r *Router) Run(addr ...string) error {
 
 // RunTLS 會依據憑證和 HTTPS 的方式開始執行路由器服務。
 func (r *Router) RunTLS(addr string, certFile string, keyFile string) error {
+	r.server = &http.Server{
+		Addr: "0.0.0.0" + addr,
+		// WriteTimeout: time.Second * 15,
+		// ReadTimeout:  time.Second * 15,
+		// IdleTimeout:  time.Second * 60,
+		Handler: r,
+	}
 	r.sortMiddlewares()
-	return http.ListenAndServeTLS(addr, certFile, keyFile, r)
+	return r.server.ListenAndServeTLS(certFile, keyFile)
 }
 
 // Shutdown 會完好地關閉伺服器。
