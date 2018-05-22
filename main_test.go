@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	"context"
 
@@ -110,6 +111,7 @@ func TestBasicRoute(t *testing.T) {
 			assert.NoError(err)
 		}
 	}()
+	<-time.After(time.Millisecond * 200)
 	sendTestRequests(assert, []testRequest{
 		{
 			Path: "http://localhost:8080/",
@@ -179,6 +181,7 @@ func TestBasicMethodRoute(t *testing.T) {
 			assert.NoError(err)
 		}
 	}()
+	<-time.After(time.Millisecond * 200)
 	sendTestRequests(assert, []testRequest{
 		{
 			Path: "http://localhost:8080/get",
@@ -240,6 +243,7 @@ func TestParamRoute(t *testing.T) {
 			assert.NoError(err)
 		}
 	}()
+	<-time.After(time.Millisecond * 200)
 	sendTestRequests(assert, []testRequest{
 		{
 			Path: "http://localhost:8080/",
@@ -284,6 +288,7 @@ func TestOptionalParamRoute(t *testing.T) {
 			assert.NoError(err)
 		}
 	}()
+	<-time.After(time.Millisecond * 200)
 	sendTestRequests(assert, []testRequest{
 		{
 			Path: "http://localhost:8080/",
@@ -334,6 +339,7 @@ func TestOptionalParamRoute2(t *testing.T) {
 			assert.NoError(err)
 		}
 	}()
+	<-time.After(time.Millisecond * 200)
 	sendTestRequests(assert, []testRequest{
 		{
 			Path:       "http://localhost:8080/",
@@ -404,6 +410,7 @@ func TestRegExParamRoute(t *testing.T) {
 			assert.NoError(err)
 		}
 	}()
+	<-time.After(time.Millisecond * 200)
 	sendTestRequests(assert, []testRequest{
 		{
 			Path: "http://localhost:8080/",
@@ -465,6 +472,7 @@ func TestOptionalRegExParamRoute(t *testing.T) {
 			assert.NoError(err)
 		}
 	}()
+	<-time.After(time.Millisecond * 200)
 	sendTestRequests(assert, []testRequest{
 		{
 			Path: "http://localhost:8080/",
@@ -530,6 +538,7 @@ func TestAnyRegExParamRoute(t *testing.T) {
 			assert.NoError(err)
 		}
 	}()
+	<-time.After(time.Millisecond * 200)
 	sendTestRequests(assert, []testRequest{
 		{
 			Path: "http://localhost:8080/",
@@ -588,6 +597,7 @@ func TestPrefixSuffixRoute(t *testing.T) {
 			assert.NoError(err)
 		}
 	}()
+	<-time.After(time.Millisecond * 200)
 	sendTestRequests(assert, []testRequest{
 		{
 			Path: "http://localhost:8080/",
@@ -658,6 +668,7 @@ func TestOptionalPrefixSuffixRoute(t *testing.T) {
 			assert.NoError(err)
 		}
 	}()
+	<-time.After(time.Millisecond * 200)
 	sendTestRequests(assert, []testRequest{
 		{
 			Path: "http://localhost:8080/",
@@ -741,6 +752,7 @@ func TestPrefixSuffixRegExRoute(t *testing.T) {
 			assert.NoError(err)
 		}
 	}()
+	<-time.After(time.Millisecond * 200)
 	sendTestRequests(assert, []testRequest{
 		{
 			Path: "http://localhost:8080/",
@@ -815,6 +827,7 @@ func TestLookbehindRoute(t *testing.T) {
 			assert.NoError(err)
 		}
 	}()
+	<-time.After(time.Millisecond * 200)
 	sendTestRequests(assert, []testRequest{
 		{
 			Path: "http://localhost:8080/",
@@ -874,6 +887,7 @@ func TestMiddleware(t *testing.T) {
 			assert.NoError(err)
 		}
 	}()
+	<-time.After(time.Millisecond * 200)
 	sendTestRequests(assert, []testRequest{
 		{
 			Path: "http://localhost:8080/",
@@ -909,6 +923,7 @@ func TestRouteGroup(t *testing.T) {
 			assert.NoError(err)
 		}
 	}()
+	<-time.After(time.Millisecond * 200)
 	sendTestRequests(assert, []testRequest{
 		{
 			Path: "http://localhost:8080/v1/user/123",
@@ -1000,6 +1015,7 @@ func TestRouteGroupMiddleware(t *testing.T) {
 			assert.NoError(err)
 		}
 	}()
+	<-time.After(time.Millisecond * 200)
 	sendTestRequests(assert, []testRequest{
 		{
 			Path: "http://localhost:8080/v1/user/123",
@@ -1057,6 +1073,7 @@ func TestGlobalMiddleware(t *testing.T) {
 			assert.NoError(err)
 		}
 	}()
+	<-time.After(time.Millisecond * 200)
 	sendTestRequests(assert, []testRequest{
 		{
 			Path: "http://localhost:8080/",
@@ -1085,6 +1102,7 @@ func TestGenerateRoute(t *testing.T) {
 			assert.NoError(err)
 		}
 	}()
+	<-time.After(time.Millisecond * 200)
 	sendTestRequests(assert, []testRequest{
 		{
 			Path: "http://localhost:8080/one",
@@ -1138,6 +1156,7 @@ func TestStaticDirRoute(t *testing.T) {
 			assert.NoError(err)
 		}
 	}()
+	<-time.After(time.Millisecond * 200)
 	sendTestRequests(assert, []testRequest{
 		{
 			Path: "http://localhost:8080/file.txt",
@@ -1235,6 +1254,7 @@ func TestServeFilesDirRoute(t *testing.T) {
 			assert.NoError(err)
 		}
 	}()
+	<-time.After(time.Millisecond * 200)
 	sendTestRequests(assert, []testRequest{
 		{
 			Path: "http://localhost:8080/file.txt",
@@ -1333,6 +1353,7 @@ func TestServeFilesRoute(t *testing.T) {
 			assert.NoError(err)
 		}
 	}()
+	<-time.After(time.Millisecond * 200)
 	sendTestRequests(assert, []testRequest{
 		{
 			Path: "http://localhost:8080/file.txt",
@@ -1457,6 +1478,8 @@ func TestServeFileRoute(t *testing.T) {
 			assert.NoError(err)
 		}
 	}()
+	<-time.After(time.Millisecond * 200)
+	<-time.After(time.Millisecond * 200)
 	sendTestRequests(assert, []testRequest{
 		{
 			Path: "http://localhost:8080/one",
@@ -1513,6 +1536,7 @@ func TestServeFilesAndStaticRoute(t *testing.T) {
 			assert.NoError(err)
 		}
 	}()
+	<-time.After(time.Millisecond * 200)
 	sendTestRequests(assert, []testRequest{
 		{
 			Path: "http://localhost:8080/one",
@@ -1625,6 +1649,7 @@ func TestTrailingSlashesRoute(t *testing.T) {
 			assert.NoError(err)
 		}
 	}()
+	<-time.After(time.Millisecond * 200)
 	sendTestRequests(assert, []testRequest{
 		{
 			Path: "http://localhost:8080",
