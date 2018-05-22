@@ -472,25 +472,6 @@ func (r *Router) match(routes *routes, w http.ResponseWriter, req *http.Request)
 					}
 				}
 
-				/*if !isLastPart {
-					nextPart := route.parts[index+1]
-					isNextPartLast := index+1 == partLength
-
-					if isNextPartLast {
-						if nextPart.isRegExp {
-							if nextPart.rule.name == "*" {
-								if vars == nil {
-									vars = make(map[string]string)
-								}
-								vars[part.name] = strings.Join(components[index:], "/")
-
-								matched = true
-								break partScan
-							}
-						}
-					}
-				}*/
-
 				if vars == nil {
 					vars = make(map[string]string)
 				}
@@ -511,7 +492,7 @@ func (r *Router) match(routes *routes, w http.ResponseWriter, req *http.Request)
 							if vars == nil {
 								vars = make(map[string]string)
 							}
-							vars[part.name] = strings.Join(components[index:], "/")
+							vars[part.name] = strings.Join(components[index+1:], "/")
 
 							matched = true
 							break partScan

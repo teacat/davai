@@ -34,6 +34,8 @@ func main() {
 		})
 	}*/
 
+	//r.Get("/{*:filename}", http.FileServer(http.Dir("test")))
+
 	//r.ServeFiles("/", "test").DirectoryListing = true
 
 	//r.ServeFile("/wow", "test/file.txt")
