@@ -80,7 +80,7 @@ func main() {
 	d.Post("/album", func(w http.ResponseWriter, r *http.Request) {
 		// ...
 	})
-	http.Handle("/", d)
+	d.Run()
 }
 ```
 
@@ -106,7 +106,7 @@ func main() {
 		vars := davai.Vars(r)
 		fmt.Println(vars["title"])
 	})
-	http.Handle("/", d)
+	d.Run()
 }
 ```
 
@@ -173,7 +173,7 @@ func main() {
 	d.Rule("r", "[0-9a-z]++")
 	// 接著就能夠直接在路由中使用。
 	d.Get("/post/{r:name}", PostHandler)
-	http.Handle("/", d)
+	d.Run()
 }
 ```
 
@@ -201,7 +201,7 @@ func main() {
 		v2.Post("/post/{title?}", PostHandler)
 		v2.Post("/login", LoginHandler)
 	}
-	http.Handle("/", d)
+	d.Run()
 }
 ```
 
@@ -244,7 +244,7 @@ func main() {
 	// 將 `MyMiddleware` 中介軟體安插於路由中。
 	d.Get("/post", MyMiddleware, UserHandler)
 	d.Get("/album", MyMiddleware, AlbumHandler)
-	http.Handle("/", d)
+	d.Run()
 }
 ```
 
@@ -265,7 +265,7 @@ func main() {
 		v1.Post("/user", UserHandler)
 		v1.Post("/login", LoginHandler)
 	}
-	http.Handle("/", d)
+	d.Run()
 }
 ```
 
@@ -277,7 +277,7 @@ func main() {
 	// 將多個中介軟體作為全域用途並在所有路由中執行。
 	d.Use(MyMiddleware, AnotherMiddlewate)
 	// ...
-	http.Handle("/", d)
+	d.Run()
 }
 ```
 
@@ -286,10 +286,9 @@ func main() {
 ```go
 func main() {
 	d := davai.New()
-	// 將多個中介軟體作為全域用途並在所有路由中執行。
-	r.Get("/{*:file}", http.FileServer(http.Dir("test/")))
-	// ...
-	http.Handle("/", d)
+
+
+	d.Run()
 }
 ```
 
@@ -302,7 +301,7 @@ func main() {
 	d := davai.New()
 	// 透過 `NoRoute` 指定當客戶端呼叫了不存在的路由時應該對應的處理函式。
 	d.NoRoute(NoRouteHandler)
-	http.Handle("/", d)
+	d.Run()
 }
 ```
 
