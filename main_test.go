@@ -1,6 +1,7 @@
 package davai
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -66,13 +67,16 @@ func sendTestRequests(a *assert.Assertions, reqs []testRequest) {
 
 func varsToString(vars map[string]string) string {
 	var slice []string
+
 	for _, v := range vars {
 		slice = append(slice, v)
 	}
 	sort.Slice(slice, func(i, j int) bool {
 		return slice[i] < slice[j]
 	})
-	return strings.Join(slice, ",")
+	a := strings.Join(slice, ",")
+	fmt.Printf("%+v | %s\n", vars, a)
+	return a
 }
 
 func TestBasicRoute(t *testing.T) {
@@ -289,11 +293,11 @@ func TestOptionalParamRoute(t *testing.T) {
 		},
 		{
 			Path: "http://localhost:8080/1",
-			Body: "two:1",
+			Body: "two:,1",
 		},
 		{
 			Path: "http://localhost:8080/1/2",
-			Body: "three:1,2",
+			Body: "three:,1,2",
 		},
 		{
 			Path: "http://localhost:8080/1/2/3",
@@ -348,7 +352,7 @@ func TestOptionalParamRoute2(t *testing.T) {
 		},
 		{
 			Path: "http://localhost:8080/fixed/1/fixed",
-			Body: "two:1",
+			Body: "two:,1",
 		},
 		{
 			Path: "http://localhost:8080/fixed/1/fixed/2",
@@ -356,7 +360,7 @@ func TestOptionalParamRoute2(t *testing.T) {
 		},
 		{
 			Path: "http://localhost:8080/fixed/1/fixed/2/fixed",
-			Body: "three:1,2",
+			Body: "three:,1,2",
 		},
 		{
 			Path: "http://localhost:8080/fixed/1/fixed/2/fixed/3",
@@ -470,11 +474,11 @@ func TestOptionalRegExParamRoute(t *testing.T) {
 		},
 		{
 			Path: "http://localhost:8080/1",
-			Body: "two:1",
+			Body: "two:,1",
 		},
 		{
 			Path: "http://localhost:8080/1/2",
-			Body: "three:1,2",
+			Body: "three:,1,2",
 		},
 		{
 			Path: "http://localhost:8080/1/2/3",
@@ -551,7 +555,7 @@ func TestAnyRegExParamRoute(t *testing.T) {
 		},
 		{
 			Path: "http://localhost:8080/one/two/three/four",
-			Body: "*|five:one",
+			Body: "*|five:,one",
 		},
 		{
 			Path: "http://localhost:8080/1/two/three/four/5",
@@ -671,7 +675,7 @@ func TestOptionalPrefixSuffixRoute(t *testing.T) {
 		},
 		{
 			Path: "http://localhost:8080/pre.1.suf",
-			Body: "1",
+			Body: ",1",
 		},
 		{
 			Path: "http://localhost:8080/pre..suf",

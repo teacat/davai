@@ -170,15 +170,6 @@ func (r *Router) ServeFiles(path string, handlers ...interface{}) *Route {
 				http.FileServer(http.Dir(a)).ServeHTTP(w, req)
 
 			}))
-
-			/*handlers[k] = http.StripPrefix(path, http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-
-				http.FileServer(http.Dir(a)).ServeHTTP(w, req)
-
-				//http.ServeFile(w, req, a)
-			}))*/
-
-			//handlers[k] = http.StripPrefix(path, http.FileServer(http.Dir(a)))
 		}
 	}
 
@@ -414,7 +405,7 @@ func (r *Router) match(routes *routes, w http.ResponseWriter, req *http.Request)
 
 	for _, route := range routes.dynamics {
 		var matched bool
-		var vars map[string]string
+		vars := route.defaultCaptureVars
 		partLength := len(route.parts)
 
 	partScan:
@@ -449,9 +440,6 @@ func (r *Router) match(routes *routes, w http.ResponseWriter, req *http.Request)
 				if part.isRegExp {
 					if part.rule.name == "*" {
 						if isLastPart {
-							if vars == nil {
-								vars = make(map[string]string)
-							}
 							vars[part.name] = strings.Join(components[index:], "/")
 
 							matched = true
@@ -463,10 +451,6 @@ func (r *Router) match(routes *routes, w http.ResponseWriter, req *http.Request)
 							break partScan
 						}
 					}
-				}
-
-				if vars == nil {
-					vars = make(map[string]string)
 				}
 				vars[part.name] = component
 			}
@@ -482,10 +466,7 @@ func (r *Router) match(routes *routes, w http.ResponseWriter, req *http.Request)
 					}
 					if nextPart.isRegExp {
 						if nextPart.rule.name == "*" {
-							if vars == nil {
-								vars = make(map[string]string)
-							}
-							vars[part.name] = strings.Join(components[index+1:], "/")
+							vars[nextPart.name] = strings.Join(components[index+1:], "/")
 
 							matched = true
 							break partScan

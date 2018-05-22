@@ -55,6 +55,7 @@ type Route struct {
 	RegexCache bool
 	// DirectoryListing 可以決定此路由所提供的靜態目錄是否允許暴露底下的檔案。
 	DirectoryListing bool
+
 	// routeGroup 是這個路由所屬的路由群組。
 	routeGroup *RouteGroup
 	// name 是路由的名稱，供反向路由使用。
@@ -75,6 +76,10 @@ type Route struct {
 	hasRegExp bool
 	// hasCaptureGroup 表示此路由中是否帶有擷取群組。
 	hasCaptureGroup bool
+	// defaultCaptureVars 是預設的擷取變數結果，這是個唯獨資料必須複製來更改。
+	// 這個的存在是用來讓 `Vars` 能夠在沒有接收到指定變數的情況下回傳一個完整的截取變數結果，
+	// 而不需要每次都完整掃描請求路由來取得空結果。
+	defaultCaptureVars map[string]string
 	// rawHandlers 是尚未分類的路由處理函式、中介軟體。
 	rawHandlers []interface{}
 	// middlewares 是這個路由的中介軟體。
@@ -190,6 +195,13 @@ func (r *Route) tearApart() {
 			isRegExp:       isRegExp,
 			isOptional:     isOptional,
 		})
+		//
+		if isCaptureGroup {
+			if r.defaultCaptureVars == nil {
+				r.defaultCaptureVars = make(map[string]string)
+			}
+			r.defaultCaptureVars[varName] = ""
+		}
 		//
 		r.addPriority(priorityPath)
 		//
