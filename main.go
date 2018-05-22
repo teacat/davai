@@ -102,13 +102,6 @@ type routes struct {
 
 // Router 是路由器本體。
 type Router struct {
-	// CaseSensitive 會更改路由器的大小寫敏感設定，當設置為 `true` 的時候 `/foo` 不會和 `/FOO` 相符，預設為 `false`。
-	CaseSensitive bool
-	// Strict 能夠更改路由器的嚴格設定，當設置為 `true` 的時候會嚴格比對路由的結尾斜線，預設為 `false`。
-	Strict bool
-	//
-	RedirectTrailingSlash bool
-
 	// server 是 HTTP 伺服器。
 	server *http.Server
 	// routeNames 是用來存放已命名的路由供之後取得。
@@ -129,8 +122,11 @@ type Router struct {
 	rules map[string]*rule
 }
 
-// ServeFile 能夠提供某個靜態檔案。
+// ServeFile 能夠提供某個靜態檔案，其中可以安插中介軟體，而最後一個參數必須是字串來表示檔案的相對位置。
 //
+//   ServeFile("/", "resources/file.txt")
+//
+// 當路由器起動時，資料夾不存在於硬碟上則會發生 `ErrFileNotFound` 錯誤。
 func (r *Router) ServeFile(path string, handlers ...interface{}) *Route {
 	for k, v := range handlers {
 		switch a := v.(type) {
@@ -151,7 +147,11 @@ func (r *Router) ServeFile(path string, handlers ...interface{}) *Route {
 	return r.routeGroups[0].Get(path, handlers...)
 }
 
+// ServeFiles 可以提供整個靜態資料夾目錄，其中可以安插中介軟體，而最後一個參數必須是字串來表示資料夾的相對位置。
 //
+//   ServeFiles("/", "resources")
+//
+// 當路由器起動時，資料夾不存在於硬碟上則會發生 `ErrDirectoryNotFound` 錯誤。
 func (r *Router) ServeFiles(path string, handlers ...interface{}) *Route {
 
 	route := r.routeGroups[0].Get(path+"/{*:file}", handlers...)
