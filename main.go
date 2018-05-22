@@ -164,11 +164,14 @@ func (r *Router) ServeFiles(path string, handlers ...interface{}) *Route {
 
 			route.rawHandlers[k] = http.StripPrefix(path, http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 
-				if info, err := os.Stat(a + req.URL.Path); err == nil && info.IsDir() {
-					if !strings.HasSuffix(req.URL.Path, "/") && req.URL.Path != "" {
+				if !strings.HasSuffix(req.URL.Path, "/") && req.URL.Path != "" {
+					if info, err := os.Stat(a + req.URL.Path); err == nil && info.IsDir() {
 						http.Redirect(w, req, path+req.URL.Path+"/", 301)
 						return
 					}
+				}
+
+				if info, err := os.Stat(a + req.URL.Path); err == nil && info.IsDir() {
 					if !route.DirectoryListing {
 						w.WriteHeader(http.StatusForbidden)
 						return
