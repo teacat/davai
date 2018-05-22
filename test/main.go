@@ -1,11 +1,8 @@
 package main
 
 import (
-	"fmt"
-	"net/http"
 	"sort"
 	"strings"
-	"time"
 
 	davai "github.com/teacat/go-davai"
 )
@@ -23,7 +20,7 @@ func varsToString(vars map[string]string) string {
 
 func main() {
 	r := davai.New()
-	MyMiddleware := func(next http.Handler) http.Handler {
+	/*MyMiddleware := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// 從接收到請求的時候就開始記錄時間。
 			start := time.Now()
@@ -35,22 +32,11 @@ func main() {
 			latency := time.Since(start)
 			fmt.Println(latency)
 		})
-	}
+	}*/
 
-	//r.ServeFiles("/wow/{*:file}", "test")
+	//r.ServeFiles("/", "test").DirectoryListing = true
 
-	r.Use(MyMiddleware)
-
-	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Root"))
-	})
-
-	v1 := r.Group("/v1", MyMiddleware)
-	{
-		v1.Get("/test", MyMiddleware, func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("Root"))
-		})
-	}
+	//r.ServeFile("/wow", "test/file.txt")
 
 	//r.Get("/test/{*:file}", func(w http.ResponseWriter, r *http.Request) {
 	//	w.Write([]byte("Root!"))

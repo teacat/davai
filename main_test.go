@@ -16,14 +16,15 @@ import (
 )
 
 const (
-	statusOK       = 200
-	statusNotFound = 404
-	methodPost     = "POST"
-	methodGet      = "GET"
-	methodDelete   = "DELETE"
-	methodOptions  = "OPTIONS"
-	methodPut      = "PUT"
-	methodPatch    = "PATCH"
+	statusOK        = 200
+	statusNotFound  = 404
+	statusForbidden = 403
+	methodPost      = "POST"
+	methodGet       = "GET"
+	methodDelete    = "DELETE"
+	methodOptions   = "OPTIONS"
+	methodPut       = "PUT"
+	methodPatch     = "PATCH"
 )
 
 type testRequest struct {
@@ -1078,9 +1079,9 @@ func TestStaticDirRoute(t *testing.T) {
 	f, err := filepath.Abs(".")
 	assert.NoError(err)
 	assert.NoError(os.Chdir(f))
-	r.Get("/{*:file}", http.FileServer(http.Dir("test")))
-	r.Get("/static/{*:file}", http.StripPrefix("/static", http.FileServer(http.Dir("test"))))
-	r.Get("/prefix/{*:file}", http.StripPrefix("/prefix", http.FileServer(http.Dir("."))))
+	r.Get("/", http.FileServer(http.Dir("test")))
+	r.Get("/static", http.StripPrefix("/static", http.FileServer(http.Dir("test"))))
+	r.Get("/prefix", http.StripPrefix("/prefix", http.FileServer(http.Dir("."))))
 	go func() {
 		r.Run()
 	}()
@@ -1090,7 +1091,15 @@ func TestStaticDirRoute(t *testing.T) {
 			Body: "This is file.txt.",
 		},
 		{
+			Path: "http://localhost:8080/file.txt/",
+			Body: "This is file.txt.",
+		},
+		{
 			Path: "http://localhost:8080/directory/file.txt",
+			Body: "This is directory/file.txt.",
+		},
+		{
+			Path: "http://localhost:8080/directory/file.txt/",
 			Body: "This is directory/file.txt.",
 		},
 		{
@@ -1098,7 +1107,15 @@ func TestStaticDirRoute(t *testing.T) {
 			Body: "This is file.txt.",
 		},
 		{
+			Path: "http://localhost:8080/static/file.txt/",
+			Body: "This is file.txt.",
+		},
+		{
 			Path: "http://localhost:8080/static/directory/file.txt",
+			Body: "This is directory/file.txt.",
+		},
+		{
+			Path: "http://localhost:8080/static/directory/file.txt/",
 			Body: "This is directory/file.txt.",
 		},
 		{
@@ -1106,7 +1123,15 @@ func TestStaticDirRoute(t *testing.T) {
 			Body: "This is file.txt.",
 		},
 		{
+			Path: "http://localhost:8080/prefix/test/file.txt/",
+			Body: "This is file.txt.",
+		},
+		{
 			Path: "http://localhost:8080/prefix/test/directory/file.txt",
+			Body: "This is directory/file.txt.",
+		},
+		{
+			Path: "http://localhost:8080/prefix/test/directory/file.txt/",
 			Body: "This is directory/file.txt.",
 		},
 		{
@@ -1114,11 +1139,23 @@ func TestStaticDirRoute(t *testing.T) {
 			Body: "<pre>\n<a href=\"directory/\">directory/</a>\n<a href=\"file.txt\">file.txt</a>\n<a href=\"main.go\">main.go</a>\n</pre>\n",
 		},
 		{
+			Path: "http://localhost:8080/",
+			Body: "<pre>\n<a href=\"directory/\">directory/</a>\n<a href=\"file.txt\">file.txt</a>\n<a href=\"main.go\">main.go</a>\n</pre>\n",
+		},
+		{
 			Path: "http://localhost:8080/static",
 			Body: "<pre>\n<a href=\"directory/\">directory/</a>\n<a href=\"file.txt\">file.txt</a>\n<a href=\"main.go\">main.go</a>\n</pre>\n",
 		},
 		{
+			Path: "http://localhost:8080/static/",
+			Body: "<pre>\n<a href=\"directory/\">directory/</a>\n<a href=\"file.txt\">file.txt</a>\n<a href=\"main.go\">main.go</a>\n</pre>\n",
+		},
+		{
 			Path: "http://localhost:8080/prefix/test",
+			Body: "<pre>\n<a href=\"directory/\">directory/</a>\n<a href=\"file.txt\">file.txt</a>\n<a href=\"main.go\">main.go</a>\n</pre>\n",
+		},
+		{
+			Path: "http://localhost:8080/prefix/test/",
 			Body: "<pre>\n<a href=\"directory/\">directory/</a>\n<a href=\"file.txt\">file.txt</a>\n<a href=\"main.go\">main.go</a>\n</pre>\n",
 		},
 		{
@@ -1136,9 +1173,9 @@ func TestServeFilesDirRoute(t *testing.T) {
 	f, err := filepath.Abs(".")
 	assert.NoError(err)
 	assert.NoError(os.Chdir(f))
-	r.ServeFiles("/{*:file}", http.Dir("test"))
-	r.ServeFiles("/static/{*:file}", http.Dir("test"))
-	r.ServeFiles("/prefix/{*:file}", http.Dir("."))
+	r.ServeFiles("/", http.Dir("test"))
+	r.ServeFiles("/static", http.Dir("test"))
+	r.ServeFiles("/prefix", http.Dir("."))
 	go func() {
 		r.Run()
 	}()
@@ -1148,7 +1185,15 @@ func TestServeFilesDirRoute(t *testing.T) {
 			Body: "This is file.txt.",
 		},
 		{
+			Path: "http://localhost:8080/file.txt/",
+			Body: "This is file.txt.",
+		},
+		{
 			Path: "http://localhost:8080/directory/file.txt",
+			Body: "This is directory/file.txt.",
+		},
+		{
+			Path: "http://localhost:8080/directory/file.txt/",
 			Body: "This is directory/file.txt.",
 		},
 		{
@@ -1156,7 +1201,15 @@ func TestServeFilesDirRoute(t *testing.T) {
 			Body: "This is file.txt.",
 		},
 		{
+			Path: "http://localhost:8080/static/file.txt/",
+			Body: "This is file.txt.",
+		},
+		{
 			Path: "http://localhost:8080/static/directory/file.txt",
+			Body: "This is directory/file.txt.",
+		},
+		{
+			Path: "http://localhost:8080/static/directory/file.txt/",
 			Body: "This is directory/file.txt.",
 		},
 		{
@@ -1164,7 +1217,15 @@ func TestServeFilesDirRoute(t *testing.T) {
 			Body: "This is file.txt.",
 		},
 		{
+			Path: "http://localhost:8080/prefix/test/file.txt/",
+			Body: "This is file.txt.",
+		},
+		{
 			Path: "http://localhost:8080/prefix/test/directory/file.txt",
+			Body: "This is directory/file.txt.",
+		},
+		{
+			Path: "http://localhost:8080/prefix/test/directory/file.txt/",
 			Body: "This is directory/file.txt.",
 		},
 		{
@@ -1172,11 +1233,23 @@ func TestServeFilesDirRoute(t *testing.T) {
 			Body: "<pre>\n<a href=\"directory/\">directory/</a>\n<a href=\"file.txt\">file.txt</a>\n<a href=\"main.go\">main.go</a>\n</pre>\n",
 		},
 		{
+			Path: "http://localhost:8080/",
+			Body: "<pre>\n<a href=\"directory/\">directory/</a>\n<a href=\"file.txt\">file.txt</a>\n<a href=\"main.go\">main.go</a>\n</pre>\n",
+		},
+		{
 			Path: "http://localhost:8080/static",
 			Body: "<pre>\n<a href=\"directory/\">directory/</a>\n<a href=\"file.txt\">file.txt</a>\n<a href=\"main.go\">main.go</a>\n</pre>\n",
 		},
 		{
+			Path: "http://localhost:8080/static/",
+			Body: "<pre>\n<a href=\"directory/\">directory/</a>\n<a href=\"file.txt\">file.txt</a>\n<a href=\"main.go\">main.go</a>\n</pre>\n",
+		},
+		{
 			Path: "http://localhost:8080/prefix/test",
+			Body: "<pre>\n<a href=\"directory/\">directory/</a>\n<a href=\"file.txt\">file.txt</a>\n<a href=\"main.go\">main.go</a>\n</pre>\n",
+		},
+		{
+			Path: "http://localhost:8080/prefix/test/",
 			Body: "<pre>\n<a href=\"directory/\">directory/</a>\n<a href=\"file.txt\">file.txt</a>\n<a href=\"main.go\">main.go</a>\n</pre>\n",
 		},
 		{
@@ -1194,9 +1267,10 @@ func TestServeFilesRoute(t *testing.T) {
 	f, err := filepath.Abs(".")
 	assert.NoError(err)
 	assert.NoError(os.Chdir(f))
-	r.ServeFiles("/{*:file}", "test")
-	r.ServeFiles("/static/{*:file}", "test")
-	r.ServeFiles("/prefix/{*:file}", ".")
+	r.ServeFiles("/", "test").DirectoryListing = true
+	r.ServeFiles("/static", "test").DirectoryListing = true
+	r.ServeFiles("/prefix", ".").DirectoryListing = true
+	r.ServeFiles("/nolisting", "test")
 	go func() {
 		r.Run()
 	}()
@@ -1206,7 +1280,15 @@ func TestServeFilesRoute(t *testing.T) {
 			Body: "This is file.txt.",
 		},
 		{
+			Path: "http://localhost:8080/file.txt/",
+			Body: "This is file.txt.",
+		},
+		{
 			Path: "http://localhost:8080/directory/file.txt",
+			Body: "This is directory/file.txt.",
+		},
+		{
+			Path: "http://localhost:8080/directory/file.txt/",
 			Body: "This is directory/file.txt.",
 		},
 		{
@@ -1214,7 +1296,15 @@ func TestServeFilesRoute(t *testing.T) {
 			Body: "This is file.txt.",
 		},
 		{
+			Path: "http://localhost:8080/static/file.txt/",
+			Body: "This is file.txt.",
+		},
+		{
 			Path: "http://localhost:8080/static/directory/file.txt",
+			Body: "This is directory/file.txt.",
+		},
+		{
+			Path: "http://localhost:8080/static/directory/file.txt/",
 			Body: "This is directory/file.txt.",
 		},
 		{
@@ -1222,7 +1312,15 @@ func TestServeFilesRoute(t *testing.T) {
 			Body: "This is file.txt.",
 		},
 		{
+			Path: "http://localhost:8080/prefix/test/file.txt/",
+			Body: "This is file.txt.",
+		},
+		{
 			Path: "http://localhost:8080/prefix/test/directory/file.txt",
+			Body: "This is directory/file.txt.",
+		},
+		{
+			Path: "http://localhost:8080/prefix/test/directory/file.txt/",
 			Body: "This is directory/file.txt.",
 		},
 		{
@@ -1230,7 +1328,15 @@ func TestServeFilesRoute(t *testing.T) {
 			Body: "<pre>\n<a href=\"directory/\">directory/</a>\n<a href=\"file.txt\">file.txt</a>\n<a href=\"main.go\">main.go</a>\n</pre>\n",
 		},
 		{
+			Path: "http://localhost:8080/",
+			Body: "<pre>\n<a href=\"directory/\">directory/</a>\n<a href=\"file.txt\">file.txt</a>\n<a href=\"main.go\">main.go</a>\n</pre>\n",
+		},
+		{
 			Path: "http://localhost:8080/static",
+			Body: "<pre>\n<a href=\"directory/\">directory/</a>\n<a href=\"file.txt\">file.txt</a>\n<a href=\"main.go\">main.go</a>\n</pre>\n",
+		},
+		{
+			Path: "http://localhost:8080/static/",
 			Body: "<pre>\n<a href=\"directory/\">directory/</a>\n<a href=\"file.txt\">file.txt</a>\n<a href=\"main.go\">main.go</a>\n</pre>\n",
 		},
 		{
@@ -1238,9 +1344,41 @@ func TestServeFilesRoute(t *testing.T) {
 			Body: "<pre>\n<a href=\"directory/\">directory/</a>\n<a href=\"file.txt\">file.txt</a>\n<a href=\"main.go\">main.go</a>\n</pre>\n",
 		},
 		{
+			Path: "http://localhost:8080/prefix/test/",
+			Body: "<pre>\n<a href=\"directory/\">directory/</a>\n<a href=\"file.txt\">file.txt</a>\n<a href=\"main.go\">main.go</a>\n</pre>\n",
+		},
+		{
+			Path: "http://localhost:8080/nolisting/file.txt",
+			Body: "This is file.txt.",
+		},
+		{
+			Path: "http://localhost:8080/nolisting/directory/file.txt",
+			Body: "This is directory/file.txt.",
+		},
+		{
 			Path:       "http://localhost:8080/wow.txt",
 			StatusCode: statusNotFound,
 			Body:       "404 page not found\n",
+		},
+		{
+			Path:       "http://localhost:8080/nolisting",
+			StatusCode: statusForbidden,
+			Body:       "",
+		},
+		{
+			Path:       "http://localhost:8080/nolisting/",
+			StatusCode: statusForbidden,
+			Body:       "",
+		},
+		{
+			Path:       "http://localhost:8080/nolisting/directory",
+			StatusCode: statusForbidden,
+			Body:       "",
+		},
+		{
+			Path:       "http://localhost:8080/nolisting/directory/",
+			StatusCode: statusForbidden,
+			Body:       "",
 		},
 	})
 	r.Shutdown(context.Background())
@@ -1263,8 +1401,137 @@ func TestServeFileRoute(t *testing.T) {
 			Body: "This is file.txt.",
 		},
 		{
+			Path: "http://localhost:8080/one/",
+			Body: "This is file.txt.",
+		},
+		{
+			Path: "http://localhost:8080/one//",
+			Body: "This is file.txt.",
+		},
+		{
 			Path: "http://localhost:8080/one/two",
 			Body: "This is directory/file.txt.",
+		},
+		{
+			Path: "http://localhost:8080/one/two/",
+			Body: "This is directory/file.txt.",
+		},
+		{
+			Path: "http://localhost:8080/one/two//",
+			Body: "This is directory/file.txt.",
+		},
+		{
+			Path:       "http://localhost:8080/wow.txt",
+			StatusCode: statusNotFound,
+			Body:       "404 page not found\n",
+		},
+	})
+	r.Shutdown(context.Background())
+}
+
+func TestServeFilesAndStaticRoute(t *testing.T) {
+	assert := assert.New(t)
+	r := New()
+	f, err := filepath.Abs(".")
+	assert.NoError(err)
+	assert.NoError(os.Chdir(f))
+	r.Get("/one", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("One"))
+	})
+	r.Get("/{i:one}", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("{i:one}"))
+	})
+	r.ServeFiles("/", http.Dir("test"))
+	r.ServeFiles("/resource/static", http.Dir("test"))
+	r.ServeFiles("/static", http.Dir("test"))
+	r.ServeFiles("/prefix", http.Dir("."))
+	go func() {
+		r.Run()
+	}()
+	sendTestRequests(assert, []testRequest{
+		{
+			Path: "http://localhost:8080/one",
+			Body: "One",
+		},
+		{
+			Path: "http://localhost:8080/123",
+			Body: "{i:one}",
+		},
+		{
+			Path: "http://localhost:8080/file.txt",
+			Body: "This is file.txt.",
+		},
+		{
+			Path: "http://localhost:8080/file.txt/",
+			Body: "This is file.txt.",
+		},
+		{
+			Path: "http://localhost:8080/directory/file.txt",
+			Body: "This is directory/file.txt.",
+		},
+		{
+			Path: "http://localhost:8080/directory/file.txt/",
+			Body: "This is directory/file.txt.",
+		},
+		{
+			Path: "http://localhost:8080/static/file.txt",
+			Body: "This is file.txt.",
+		},
+		{
+			Path: "http://localhost:8080/static/file.txt/",
+			Body: "This is file.txt.",
+		},
+		{
+			Path: "http://localhost:8080/static/directory/file.txt",
+			Body: "This is directory/file.txt.",
+		},
+		{
+			Path: "http://localhost:8080/static/directory/file.txt/",
+			Body: "This is directory/file.txt.",
+		},
+		{
+			Path: "http://localhost:8080/prefix/test/file.txt",
+			Body: "This is file.txt.",
+		},
+		{
+			Path: "http://localhost:8080/prefix/test/file.txt/",
+			Body: "This is file.txt.",
+		},
+		{
+			Path: "http://localhost:8080/prefix/test/directory/file.txt",
+			Body: "This is directory/file.txt.",
+		},
+		{
+			Path: "http://localhost:8080/prefix/test/directory/file.txt/",
+			Body: "This is directory/file.txt.",
+		},
+		{
+			Path: "http://localhost:8080/resource/static/file.txt",
+			Body: "This is file.txt.",
+		},
+		{
+			Path: "http://localhost:8080",
+			Body: "<pre>\n<a href=\"directory/\">directory/</a>\n<a href=\"file.txt\">file.txt</a>\n<a href=\"main.go\">main.go</a>\n</pre>\n",
+		},
+		{
+			Path: "http://localhost:8080/",
+			Body: "<pre>\n<a href=\"directory/\">directory/</a>\n<a href=\"file.txt\">file.txt</a>\n<a href=\"main.go\">main.go</a>\n</pre>\n",
+		},
+		{
+			Path: "http://localhost:8080/static",
+			Body: "<pre>\n<a href=\"directory/\">directory/</a>\n<a href=\"file.txt\">file.txt</a>\n<a href=\"main.go\">main.go</a>\n</pre>\n",
+		},
+		{
+			Path: "http://localhost:8080/static/",
+			Body: "<pre>\n<a href=\"directory/\">directory/</a>\n<a href=\"file.txt\">file.txt</a>\n<a href=\"main.go\">main.go</a>\n</pre>\n",
+		},
+		{
+			Path: "http://localhost:8080/prefix/test",
+			Body: "<pre>\n<a href=\"directory/\">directory/</a>\n<a href=\"file.txt\">file.txt</a>\n<a href=\"main.go\">main.go</a>\n</pre>\n",
+		},
+		{
+			Path: "http://localhost:8080/prefix/test/",
+			Body: "<pre>\n<a href=\"directory/\">directory/</a>\n<a href=\"file.txt\">file.txt</a>\n<a href=\"main.go\">main.go</a>\n</pre>\n",
 		},
 		{
 			Path:       "http://localhost:8080/wow.txt",
