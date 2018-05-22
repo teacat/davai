@@ -1,3 +1,37 @@
+// Davai（давай）是一個十分快速的 HTTP 路由器，這能夠讓你有效地作為其它套件的基礎核心。
+//
+// 一個最簡單的使用範例如下：
+//
+//   package main
+//
+//   import (
+//   	"net/http"
+//
+//   	davai "github.com/teacat/go-davai"
+//   )
+//
+//   func main() {
+//   	d := davai.New()
+//   	d.Get("/", func(w http.ResponseWriter, r *http.Request) {
+//   		// ...
+//   	})
+//   	d.Get("/posts", func(w http.ResponseWriter, r *http.Request) {
+//   		// ...
+//   	})
+//   	d.Post("/album", func(w http.ResponseWriter, r *http.Request) {
+//   		// ...
+//   	})
+//   	d.Run()
+//   }
+//
+// 變數路由能透過 `{}`（花括號）符號可以擷取路由中指定片段的內容並作為指定變數在路由器中使用。
+//
+//  路由：/user/{name}
+//
+//  /user/admin                ○
+//  /user/admin/profile        ✕
+//  /user/                     ✕
+
 package davai
 
 import (
@@ -12,16 +46,17 @@ import (
 )
 
 var (
-	ErrRouteNotFound     = errors.New("davai: the route was not found")
-	ErrHandlerNotFound   = errors.New("davai: the handler of the route was not found, it might be a nil pointer")
-	ErrVarNotFound       = errors.New("davai: cannot generate the route if the required parameter has no matched variable")
-	ErrFileNotFound      = errors.New("davai: the file to serve was not found")
+	// ErrRouteNotFound 表示產生反向路由的時候找不到對象路由。
+	ErrRouteNotFound = errors.New("davai: the route was not found")
+	// ErrHandlerNotFound 表示無法找到路由的最終處理函式，也許該函式是個 `nil` 指標。
+	ErrHandlerNotFound = errors.New("davai: the handler of the route was not found, it might be a nil pointer")
+	// ErrVarNotFound 表示產生反向路由時，必要的網址變數並不存在而無法反向產生該路由。
+	ErrVarNotFound = errors.New("davai: cannot generate the route if the required parameter has no matched variable")
+	// ErrFileNotFound 表示欲提供的靜態檔案並不存在。
+	ErrFileNotFound = errors.New("davai: the file to serve was not found")
+	// ErrDirectoryNotFound 表示欲提供的靜態目錄資料夾並不存在。
 	ErrDirectoryNotFound = errors.New("davai: the directory to serve was not found")
 )
-
-func main() {
-
-}
 
 // New 會建立一個新的路由器。
 func New() *Router {
@@ -128,6 +163,8 @@ type Router struct {
 	rules map[string]*rule
 }
 
+// ServeFile 能夠提供某個靜態檔案。
+//
 func (r *Router) ServeFile(path string, handlers ...interface{}) *Route {
 	for k, v := range handlers {
 		switch a := v.(type) {
