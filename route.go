@@ -53,9 +53,8 @@ type part struct {
 type Route struct {
 	// RegexCache 能啟用路由器的正規表達式快取，如果路由中有正規表達式規則且內容通常是固定的，那麼開啟此功能可以增進效能。
 	RegexCache bool
-	//
+	// DirectoryListing 可以決定此路由所提供的靜態目錄是否允許暴露底下的檔案。
 	DirectoryListing bool
-
 	// routeGroup 是這個路由所屬的路由群組。
 	routeGroup *RouteGroup
 	// name 是路由的名稱，供反向路由使用。

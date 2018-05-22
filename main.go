@@ -123,9 +123,6 @@ type Router struct {
 }
 
 // ServeFile 能夠提供某個靜態檔案，其中可以安插中介軟體，而最後一個參數必須是字串來表示檔案的相對位置。
-//
-//   ServeFile("/", "resources/file.txt")
-//
 // 當路由器起動時，資料夾不存在於硬碟上則會發生 `ErrFileNotFound` 錯誤。
 func (r *Router) ServeFile(path string, handlers ...interface{}) *Route {
 	for k, v := range handlers {
@@ -148,9 +145,6 @@ func (r *Router) ServeFile(path string, handlers ...interface{}) *Route {
 }
 
 // ServeFiles 可以提供整個靜態資料夾目錄，其中可以安插中介軟體，而最後一個參數必須是字串來表示資料夾的相對位置。
-//
-//   ServeFiles("/", "resources")
-//
 // 當路由器起動時，資料夾不存在於硬碟上則會發生 `ErrDirectoryNotFound` 錯誤。
 func (r *Router) ServeFiles(path string, handlers ...interface{}) *Route {
 
@@ -325,7 +319,7 @@ func (r *Router) sortMiddlewares() {
 	}
 }
 
-// Run 能夠以 HTTP 開始執行路由器服務。
+// Run 能夠以 HTTP 開始執行路由器服務，若無指定的埠口則會採用預設的 `:8080` 位置。
 func (r *Router) Run(addr ...string) error {
 	var a string
 	if len(addr) == 0 {
@@ -350,7 +344,7 @@ func (r *Router) RunTLS(addr string, certFile string, keyFile string) error {
 	return http.ListenAndServeTLS(addr, certFile, keyFile, r)
 }
 
-// Shutdown 會關閉伺服器。
+// Shutdown 會完好地關閉伺服器。
 func (r *Router) Shutdown(ctx context.Context) error {
 	return r.server.Shutdown(ctx)
 }
@@ -407,6 +401,7 @@ func (r *Router) callNoRoute(w http.ResponseWriter, req *http.Request) {
 	handler.ServeHTTP(w, req)
 }
 
+// match 會逐一檢查路由並比對是否和請求網址相符。
 func (r *Router) match(routes *routes, w http.ResponseWriter, req *http.Request) bool {
 	var url string
 	url = req.URL.Path
