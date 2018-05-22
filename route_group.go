@@ -46,7 +46,7 @@ func (r *RouteGroup) newRoute(method string, path string, handlers ...interface{
 		r.router.methodRoutes[route.method].statics[route.path] = route
 	} else {
 		// 保存路由至路由器。
-		r.router.methodRoutes[route.method].dymanics = append(r.router.methodRoutes[route.method].dymanics, route)
+		r.router.methodRoutes[route.method].dynamics = append(r.router.methodRoutes[route.method].dynamics, route)
 		// 依照優先度重新排序路由。
 		r.router.sort(route.method)
 	}

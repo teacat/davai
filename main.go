@@ -56,13 +56,10 @@ func New() *Router {
 			},
 		},
 	}
-	// 初始化一個 `根` 群組。
 	r.Group("")
-	// 初始化預設的正規表達式規則。
 	r.Rule("*", ".*")
 	r.Rule("i", "[0-9]+")
 	r.Rule("s", "[0-9A-Za-z]+")
-	//
 	r.NoRoute(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(404)
 		w.Write([]byte("404 page not found\n"))
@@ -96,8 +93,8 @@ type routes struct {
 	// statics 是所有的靜態路由，這會讓路由比對率先和此切片快速比對，
 	// 若無相符的路由才重新和所有動態路由比對。
 	statics map[string]*Route
-	// dymanics 是所有的動態路由。
-	dymanics []*Route
+	// dynamics 是所有的動態路由。
+	dynamics []*Route
 }
 
 // Router 是路由器本體。
@@ -126,18 +123,13 @@ type Router struct {
 // 當路由器起動時，資料夾不存在於硬碟上則會發生 `ErrFileNotFound` 錯誤。
 func (r *Router) ServeFile(path string, handlers ...interface{}) *Route {
 	for k, v := range handlers {
-		switch a := v.(type) {
+		switch t := v.(type) {
 		case string:
-			if _, err := os.Stat(a); err != nil {
+			if _, err := os.Stat(t); err != nil {
 				panic(ErrFileNotFound)
 			}
 			handlers[k] = func(w http.ResponseWriter, req *http.Request) {
-
-				//if !strings.HasSuffix(req.URL.Path, "/") {
-				//	http.Redirect(w, req, req.URL.Path+"/", 301)
-				//	return
-				//}
-				http.ServeFile(w, req, a)
+				http.ServeFile(w, req, t)
 			}
 		}
 	}
@@ -420,7 +412,7 @@ func (r *Router) match(routes *routes, w http.ResponseWriter, req *http.Request)
 		return false
 	}
 
-	for _, route := range routes.dymanics {
+	for _, route := range routes.dynamics {
 		var matched bool
 		var vars map[string]string
 		partLength := len(route.parts)
@@ -548,28 +540,28 @@ func (r *Router) dispatch(w http.ResponseWriter, req *http.Request) {
 func (r *Router) sort(method string) {
 	switch method {
 	case "GET":
-		sort.Slice(r.methodRoutes["GET"].dymanics, func(i, j int) bool {
-			return r.methodRoutes["GET"].dymanics[i].priority > r.methodRoutes["GET"].dymanics[j].priority
+		sort.Slice(r.methodRoutes["GET"].dynamics, func(i, j int) bool {
+			return r.methodRoutes["GET"].dynamics[i].priority > r.methodRoutes["GET"].dynamics[j].priority
 		})
 	case "POST":
-		sort.Slice(r.methodRoutes["POST"].dymanics, func(i, j int) bool {
-			return r.methodRoutes["POST"].dymanics[i].priority > r.methodRoutes["POST"].dymanics[j].priority
+		sort.Slice(r.methodRoutes["POST"].dynamics, func(i, j int) bool {
+			return r.methodRoutes["POST"].dynamics[i].priority > r.methodRoutes["POST"].dynamics[j].priority
 		})
 	case "PUT":
-		sort.Slice(r.methodRoutes["PUT"].dymanics, func(i, j int) bool {
-			return r.methodRoutes["PUT"].dymanics[i].priority > r.methodRoutes["PUT"].dymanics[j].priority
+		sort.Slice(r.methodRoutes["PUT"].dynamics, func(i, j int) bool {
+			return r.methodRoutes["PUT"].dynamics[i].priority > r.methodRoutes["PUT"].dynamics[j].priority
 		})
 	case "PATCH":
-		sort.Slice(r.methodRoutes["PATCH"].dymanics, func(i, j int) bool {
-			return r.methodRoutes["PATCH"].dymanics[i].priority > r.methodRoutes["PATCH"].dymanics[j].priority
+		sort.Slice(r.methodRoutes["PATCH"].dynamics, func(i, j int) bool {
+			return r.methodRoutes["PATCH"].dynamics[i].priority > r.methodRoutes["PATCH"].dynamics[j].priority
 		})
 	case "DELETE":
-		sort.Slice(r.methodRoutes["DELETE"].dymanics, func(i, j int) bool {
-			return r.methodRoutes["DELETE"].dymanics[i].priority > r.methodRoutes["DELETE"].dymanics[j].priority
+		sort.Slice(r.methodRoutes["DELETE"].dynamics, func(i, j int) bool {
+			return r.methodRoutes["DELETE"].dynamics[i].priority > r.methodRoutes["DELETE"].dynamics[j].priority
 		})
 	case "OPTIONS":
-		sort.Slice(r.methodRoutes["OPTIONS"].dymanics, func(i, j int) bool {
-			return r.methodRoutes["OPTIONS"].dymanics[i].priority > r.methodRoutes["OPTIONS"].dymanics[j].priority
+		sort.Slice(r.methodRoutes["OPTIONS"].dynamics, func(i, j int) bool {
+			return r.methodRoutes["OPTIONS"].dynamics[i].priority > r.methodRoutes["OPTIONS"].dynamics[j].priority
 		})
 	}
 
