@@ -31,7 +31,6 @@
 //  /user/admin                ○
 //  /user/admin/profile        ✕
 //  /user/                     ✕
-
 package davai
 
 import (
