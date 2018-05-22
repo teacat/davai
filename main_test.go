@@ -1,7 +1,6 @@
 package davai
 
 import (
-	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -75,7 +74,6 @@ func varsToString(vars map[string]string) string {
 		return slice[i] < slice[j]
 	})
 	a := strings.Join(slice, ",")
-	fmt.Printf("%+v | %s\n", vars, a)
 	return a
 }
 
