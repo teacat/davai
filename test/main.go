@@ -1,9 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"sort"
 	"strings"
+	"time"
 
 	davai "github.com/teacat/go-davai"
 )
@@ -21,34 +23,34 @@ func varsToString(vars map[string]string) string {
 
 func main() {
 	r := davai.New()
-	//MyMiddleware := func(next http.Handler) http.Handler {
-	//	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	//		// 從接收到請求的時候就開始記錄時間。
-	//		start := time.Now()
-	//		// ...
-	//		// 呼叫 `net.ServeHTTP` 來呼叫下一個中介軟體或者是處理函式。
-	//		// 如果不這麼做的話則會中斷繼續。
-	//		next.ServeHTTP(w, r)
-	//		// 取得本次請求的總費時。
-	//		latency := time.Since(start)
-	//		fmt.Println(latency)
-	//	})
-	//}
+	MyMiddleware := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// 從接收到請求的時候就開始記錄時間。
+			start := time.Now()
+			// ...
+			// 呼叫 `net.ServeHTTP` 來呼叫下一個中介軟體或者是處理函式。
+			// 如果不這麼做的話則會中斷繼續。
+			next.ServeHTTP(w, r)
+			// 取得本次請求的總費時。
+			latency := time.Since(start)
+			fmt.Println(latency)
+		})
+	}
 
 	//r.ServeFiles("/wow/{*:file}", "test")
+
+	r.Use(MyMiddleware)
 
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Root"))
 	})
-	r.Get("/{one}", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(varsToString(davai.Vars(r))))
-	})
-	r.Get("/{one}/{two}", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(varsToString(davai.Vars(r))))
-	})
-	r.Get("/{one}/{two}/{three}", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(varsToString(davai.Vars(r))))
-	})
+
+	v1 := r.Group("/v1", MyMiddleware)
+	{
+		v1.Get("/test", MyMiddleware, func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte("Root"))
+		})
+	}
 
 	//r.Get("/test/{*:file}", func(w http.ResponseWriter, r *http.Request) {
 	//	w.Write([]byte("Root!"))

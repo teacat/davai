@@ -88,30 +88,9 @@ func (r *Route) Name(name string) *Route {
 
 // init 能夠初始化這個路由並且解析路徑成片段供服務開始後比對。
 func (r *Route) init() *Route {
-	// 歸類處理函式、中介軟體。
-	r.sortHandlers()
 	// 拆解路由片段。
 	r.tearApart()
 	return r
-}
-
-// sortHandlers 會歸類路由中的處理函式、中介軟體。
-func (r *Route) sortHandlers() {
-	for _, v := range r.rawHandlers {
-		switch t := v.(type) {
-		// 中介軟體。
-		case func(http.Handler) http.Handler:
-			r.middlewares = append(r.middlewares, middlewareFunc(t))
-		// 進階中介軟體。
-		case middleware:
-			r.middlewares = append(r.middlewares, t)
-		// 處理函式。
-		case func(w http.ResponseWriter, r *http.Request):
-			r.handler = http.HandlerFunc(t)
-		case http.Handler:
-			r.handler = t
-		}
-	}
 }
 
 // addPriority 會替此路由增加指定的優先度。

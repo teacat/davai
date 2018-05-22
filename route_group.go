@@ -1,6 +1,9 @@
 package davai
 
-import "strings"
+import (
+	"net/http"
+	"strings"
+)
 
 // RouteGroup 是單個路由群組。
 type RouteGroup struct {
@@ -11,18 +14,16 @@ type RouteGroup struct {
 	// routes 表示這個群組內的路由。
 	routes []*Route
 	// middlewares 是這個路由群組的共享中介軟體。
-	middlewares []interface{}
+	middlewares []middleware
 }
 
 // newRoute 會在目前的路由群組中依指定的方法、路徑、處理函式來插入新的路由。
 func (r *RouteGroup) newRoute(method string, path string, handlers ...interface{}) *Route {
 	//
-	var rawHandlers []interface{}
-	for _, v := range r.middlewares {
-		rawHandlers = append(rawHandlers, v)
-	}
-	for _, v := range handlers {
-		rawHandlers = append(rawHandlers, v)
+	if path == "/" {
+		if r.prefix != "" {
+			path = ""
+		}
 	}
 	if path != "/" {
 		path = strings.TrimRight(r.prefix+path, "/")
@@ -30,24 +31,41 @@ func (r *RouteGroup) newRoute(method string, path string, handlers ...interface{
 	route := &Route{
 		routeGroup:  r,
 		path:        path,
-		rawHandlers: rawHandlers,
+		rawHandlers: handlers,
 		method:      method,
 	}
 	// 初始化路由。
 	route.init()
 	// 保存路由至此群組。
 	r.routes = append(r.routes, route)
+	// 保存路由至此路由器。
+	r.router.routes = append(r.router.routes, route)
 	//
 	if route.isStatic {
 		//
-		r.router.routes[route.method].statics[route.path] = route
+		r.router.methodRoutes[route.method].statics[route.path] = route
 	} else {
 		// 保存路由至路由器。
-		r.router.routes[route.method].dymanics = append(r.router.routes[route.method].dymanics, route)
+		r.router.methodRoutes[route.method].dymanics = append(r.router.methodRoutes[route.method].dymanics, route)
 		// 依照優先度重新排序路由。
 		r.router.sort(route.method)
 	}
 	return route
+}
+
+// Use 能將傳入的中介軟體作為群組中介軟體在群組內的所有路由中使用。
+func (r *RouteGroup) Use(middlewares ...interface{}) *RouteGroup {
+	for _, v := range middlewares {
+		switch t := v.(type) {
+		// 中介軟體。
+		case func(http.Handler) http.Handler:
+			r.middlewares = append(r.middlewares, middlewareFunc(t))
+		// 進階中介軟體。
+		case middleware:
+			r.middlewares = append(r.middlewares, t)
+		}
+	}
+	return r
 }
 
 // Get 會依照 GET 方法建立相對應的路由。

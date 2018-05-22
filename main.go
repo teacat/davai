@@ -28,7 +28,7 @@ func New() *Router {
 	r := &Router{
 		routeNames: make(map[string]*Route),
 		rules:      make(map[string]*rule),
-		routes: map[string]*routes{
+		methodRoutes: map[string]*routes{
 			"GET": {
 				method:  "GET",
 				statics: make(map[string]*Route),
@@ -105,8 +105,10 @@ type Router struct {
 	server *http.Server
 	// routeNames 是用來存放已命名的路由供之後取得。
 	routeNames map[string]*Route
-	// routes 是現有的全部路由，以不同方法作為鍵名區分。
-	routes map[string]*routes
+	// routes 是現有的全部路由。
+	routes []*Route
+	// methodRoutes 是以不同方法作為鍵名區分的所有路由。
+	methodRoutes map[string]*routes
 	// routeGroups 是所有的路由群組。
 	routeGroups []*RouteGroup
 	// middlewares 是全域中介軟體。
@@ -231,10 +233,10 @@ func (r *Router) Rule(name string, expr string) {
 // Group 會建立新的路由群組，群組內的路由會共享前輟與中介軟體。
 func (r *Router) Group(path string, middlewares ...interface{}) *RouteGroup {
 	group := &RouteGroup{
-		router:      r,
-		prefix:      path,
-		middlewares: middlewares,
+		router: r,
+		prefix: path,
 	}
+	group.Use(middlewares...)
 	r.routeGroups = append(r.routeGroups, group)
 	return group
 }
@@ -256,6 +258,33 @@ func (r *Router) NoRoute(handlers ...interface{}) {
 	}
 }
 
+// sortMiddlewares 會重新整理路由中的所有中介軟體並將其安插到每個路由的執行函式鏈中。
+func (r *Router) sortMiddlewares() {
+	for _, route := range r.routes {
+		//
+		route.middlewares = r.middlewares
+
+		//
+		route.middlewares = append(route.middlewares, route.routeGroup.middlewares...)
+		//
+		for _, v := range route.rawHandlers {
+			switch t := v.(type) {
+			// 中介軟體。
+			case func(http.Handler) http.Handler:
+				route.middlewares = append(route.middlewares, middlewareFunc(t))
+			// 進階中介軟體。
+			case middleware:
+				route.middlewares = append(route.middlewares, t)
+			// 處理函式。
+			case func(http.ResponseWriter, *http.Request):
+				route.handler = http.HandlerFunc(t)
+			case http.Handler:
+				route.handler = t
+			}
+		}
+	}
+}
+
 // Run 能夠以 HTTP 開始執行路由器服務。
 func (r *Router) Run(addr ...string) error {
 	var a string
@@ -271,11 +300,13 @@ func (r *Router) Run(addr ...string) error {
 		// IdleTimeout:  time.Second * 60,
 		Handler: r,
 	}
+	r.sortMiddlewares()
 	return r.server.ListenAndServe()
 }
 
 // RunTLS 會依據憑證和 HTTPS 的方式開始執行路由器服務。
 func (r *Router) RunTLS(addr string, certFile string, keyFile string) error {
+	r.sortMiddlewares()
 	return http.ListenAndServeTLS(addr, certFile, keyFile, r)
 }
 
@@ -289,15 +320,19 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	r.dispatch(w, req)
 }
 
-//
-//
-//
-//
-//
-//
-///
-func (r *Router) Use(middlewares ...interface{}) {
-
+// Use 能將傳入的中介軟體作為全域中介軟體在所有路由中使用。
+func (r *Router) Use(middlewares ...interface{}) *Router {
+	for _, v := range middlewares {
+		switch t := v.(type) {
+		// 中介軟體。
+		case func(http.Handler) http.Handler:
+			r.middlewares = append(r.middlewares, middlewareFunc(t))
+		// 進階中介軟體。
+		case middleware:
+			r.middlewares = append(r.middlewares, t)
+		}
+	}
+	return r
 }
 
 // Strict 能夠更改路由器的嚴格設定，當設置為 `true` 的時候會嚴格比對路由的結尾斜線，預設為 `false`。
@@ -432,7 +467,7 @@ func (r *Router) match(routes *routes, w http.ResponseWriter, req *http.Request)
 			if !isLastPart {
 				if component != "" {
 					nextPart := route.parts[index+1]
-					isNextPartLast := index+1 == partLength-1
+					//isNextPartLast := index+1 == partLength-1
 					if nextPart.isOptional {
 						if isLastComponent {
 							matched = true
@@ -478,17 +513,17 @@ func (r *Router) dispatch(w http.ResponseWriter, req *http.Request) {
 	var matched bool
 	switch req.Method {
 	case "GET":
-		matched = r.match(r.routes["GET"], w, req)
+		matched = r.match(r.methodRoutes["GET"], w, req)
 	case "POST":
-		matched = r.match(r.routes["POST"], w, req)
+		matched = r.match(r.methodRoutes["POST"], w, req)
 	case "PUT":
-		matched = r.match(r.routes["PUT"], w, req)
+		matched = r.match(r.methodRoutes["PUT"], w, req)
 	case "PATCH":
-		matched = r.match(r.routes["PATCH"], w, req)
+		matched = r.match(r.methodRoutes["PATCH"], w, req)
 	case "DELETE":
-		matched = r.match(r.routes["DELETE"], w, req)
+		matched = r.match(r.methodRoutes["DELETE"], w, req)
 	case "OPTIONS":
-		matched = r.match(r.routes["OPTIONS"], w, req)
+		matched = r.match(r.methodRoutes["OPTIONS"], w, req)
 	}
 	if !matched {
 		r.callNoRoute(w, req)
@@ -499,28 +534,28 @@ func (r *Router) dispatch(w http.ResponseWriter, req *http.Request) {
 func (r *Router) sort(method string) {
 	switch method {
 	case "GET":
-		sort.Slice(r.routes["GET"].dymanics, func(i, j int) bool {
-			return r.routes["GET"].dymanics[i].priority > r.routes["GET"].dymanics[j].priority
+		sort.Slice(r.methodRoutes["GET"].dymanics, func(i, j int) bool {
+			return r.methodRoutes["GET"].dymanics[i].priority > r.methodRoutes["GET"].dymanics[j].priority
 		})
 	case "POST":
-		sort.Slice(r.routes["POST"].dymanics, func(i, j int) bool {
-			return r.routes["POST"].dymanics[i].priority > r.routes["POST"].dymanics[j].priority
+		sort.Slice(r.methodRoutes["POST"].dymanics, func(i, j int) bool {
+			return r.methodRoutes["POST"].dymanics[i].priority > r.methodRoutes["POST"].dymanics[j].priority
 		})
 	case "PUT":
-		sort.Slice(r.routes["PUT"].dymanics, func(i, j int) bool {
-			return r.routes["PUT"].dymanics[i].priority > r.routes["PUT"].dymanics[j].priority
+		sort.Slice(r.methodRoutes["PUT"].dymanics, func(i, j int) bool {
+			return r.methodRoutes["PUT"].dymanics[i].priority > r.methodRoutes["PUT"].dymanics[j].priority
 		})
 	case "PATCH":
-		sort.Slice(r.routes["PATCH"].dymanics, func(i, j int) bool {
-			return r.routes["PATCH"].dymanics[i].priority > r.routes["PATCH"].dymanics[j].priority
+		sort.Slice(r.methodRoutes["PATCH"].dymanics, func(i, j int) bool {
+			return r.methodRoutes["PATCH"].dymanics[i].priority > r.methodRoutes["PATCH"].dymanics[j].priority
 		})
 	case "DELETE":
-		sort.Slice(r.routes["DELETE"].dymanics, func(i, j int) bool {
-			return r.routes["DELETE"].dymanics[i].priority > r.routes["DELETE"].dymanics[j].priority
+		sort.Slice(r.methodRoutes["DELETE"].dymanics, func(i, j int) bool {
+			return r.methodRoutes["DELETE"].dymanics[i].priority > r.methodRoutes["DELETE"].dymanics[j].priority
 		})
 	case "OPTIONS":
-		sort.Slice(r.routes["OPTIONS"].dymanics, func(i, j int) bool {
-			return r.routes["OPTIONS"].dymanics[i].priority > r.routes["OPTIONS"].dymanics[j].priority
+		sort.Slice(r.methodRoutes["OPTIONS"].dymanics, func(i, j int) bool {
+			return r.methodRoutes["OPTIONS"].dymanics[i].priority > r.methodRoutes["OPTIONS"].dymanics[j].priority
 		})
 	}
 

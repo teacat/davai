@@ -1274,3 +1274,47 @@ func TestServeFileRoute(t *testing.T) {
 	})
 	r.Shutdown(context.Background())
 }
+
+func TestTrailingSlashesRoute(t *testing.T) {
+	assert := assert.New(t)
+	r := New()
+	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Root"))
+	})
+	r.Get("/one", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("One"))
+	})
+	r.Get("/one/two", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Two"))
+	})
+	go func() {
+		r.Run()
+	}()
+	sendTestRequests(assert, []testRequest{
+		{
+			Path: "http://localhost:8080",
+			Body: "Root",
+		},
+		{
+			Path: "http://localhost:8080/",
+			Body: "Root",
+		},
+		{
+			Path: "http://localhost:8080/one",
+			Body: "One",
+		},
+		{
+			Path: "http://localhost:8080/one/",
+			Body: "One",
+		},
+		{
+			Path: "http://localhost:8080/one/two",
+			Body: "Two",
+		},
+		{
+			Path: "http://localhost:8080/one/two/",
+			Body: "Two",
+		},
+	})
+	r.Shutdown(context.Background())
+}
