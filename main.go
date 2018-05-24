@@ -406,7 +406,11 @@ func (r *Router) match(routes *routes, w http.ResponseWriter, req *http.Request)
 
 	for _, route := range routes.dynamics {
 		var matched bool
-		vars := route.defaultCaptureVars
+		vars := make(map[string]string)
+		for k, v := range route.defaultCaptureVars {
+			vars[k] = v
+		}
+		//vars := route.defaultCaptureVars
 		partLength := len(route.parts)
 
 	partScan:
