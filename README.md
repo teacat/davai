@@ -1,4 +1,4 @@
-# Davai [![GoDoc](https://godoc.org/github.com/teacat/go-davai?status.svg)](https://godoc.org/github.com/teacat/go-davai) [![Coverage Status](https://coveralls.io/repos/github/teacat/go-davai/badge.svg?branch=master)](https://coveralls.io/github/teacat/go-davai?branch=master) [![Build Status](https://travis-ci.org/teacat/go-davai.svg?branch=master)](https://travis-ci.org/teacat/go-davai) [![Go Report Card](https://goreportcard.com/badge/github.com/teacat/go-davai)](https://goreportcard.com/report/github.com/teacat/go-davai)
+# Davai [![GoDoc](https://godoc.org/github.com/teacat/davai?status.svg)](https://godoc.org/github.com/teacat/davai) [![Coverage Status](https://coveralls.io/repos/github/teacat/davai/badge.svg?branch=master)](https://coveralls.io/github/teacat/davai?branch=master) [![Build Status](https://travis-ci.org/teacat/davai.svg?branch=master)](https://travis-ci.org/teacat/davai) [![Go Report Card](https://goreportcard.com/badge/github.com/teacat/davai)](https://goreportcard.com/report/github.com/teacat/davai)
 
 基於 `net/http` 的 Golang 基本 HTTP 路由，這個套件試圖提供最核心且具動態路由功能的路由器。
 
@@ -58,7 +58,7 @@ Davai（давай）是一個十分快速的 HTTP 路由器，這能夠讓你�
 打開終端機並且透過 `go get` 安裝此套件即可。
 
 ```bash
-$ go get github.com/teacat/go-davai
+$ go get github.com/teacat/davai
 ```
 
 # 使用方式
@@ -71,7 +71,7 @@ package main
 import (
 	"net/http"
 
-	davai "github.com/teacat/go-davai"
+	"github.com/teacat/davai"
 )
 
 func main() {
