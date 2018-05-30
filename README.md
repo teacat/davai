@@ -23,7 +23,7 @@ Davai（давай）是一個十分快速的 HTTP 路由器，這能夠讓你�
 
 # 效能比較
 
-這裡有份簡略化的[效能測試報表](https://github.com/reiner/reiner-benchmark)。目前仍會持續優化並且增加快取以避免重複分析先前路由而費時。
+這裡有份簡略化的[效能測試報表](https://github.com/teacat/davai-benchmark)。目前仍會持續優化並且增加快取以避免重複分析先前路由而費時。
 
 ```
 測試規格：
