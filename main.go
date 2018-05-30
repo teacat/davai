@@ -24,6 +24,28 @@ var (
 	ErrDirectoryNotFound = errors.New("davai: the directory to serve was not found")
 )
 
+const (
+	varsKey  = "davaiVars"
+	routeKey = "davaiRoute"
+)
+
+// Vars 能夠將接收到的路由變數轉換成本地的 `map[string]string` 格式來供存取使用。
+// 如果路由中有選擇性路由，且請求網址中省略了該變數，取得到的變數結果則會是空字串而非 `nil` 值。
+func Vars(r *http.Request) map[string]string {
+	if route := contextGet(r, routeKey); route != nil {
+		if v := contextGet(r, varsKey); v != nil {
+			vars := v.(map[string]string)
+			for k := range route.(*Route).defaultCaptureVars {
+				if _, ok := vars[k]; !ok {
+					vars[k] = ""
+				}
+			}
+			return vars
+		}
+	}
+	return nil
+}
+
 // New 會建立一個新的路由器。
 func New() *Router {
 	r := &Router{
@@ -33,26 +55,32 @@ func New() *Router {
 			"GET": {
 				method:  "GET",
 				statics: make(map[string]*Route),
+				caches:  make(map[string]*cacheRoute),
 			},
 			"POST": {
 				method:  "POST",
 				statics: make(map[string]*Route),
+				caches:  make(map[string]*cacheRoute),
 			},
 			"PUT": {
 				method:  "PUT",
 				statics: make(map[string]*Route),
+				caches:  make(map[string]*cacheRoute),
 			},
 			"PATCH": {
 				method:  "PATCH",
 				statics: make(map[string]*Route),
+				caches:  make(map[string]*cacheRoute),
 			},
 			"DELETE": {
 				method:  "DELETE",
 				statics: make(map[string]*Route),
+				caches:  make(map[string]*cacheRoute),
 			},
 			"OPTIONS": {
 				method:  "OPTIONS",
 				statics: make(map[string]*Route),
+				caches:  make(map[string]*cacheRoute),
 			},
 		},
 	}
@@ -67,19 +95,6 @@ func New() *Router {
 	return r
 }
 
-const (
-	varsKey = "davaiVars"
-)
-
-// Vars 能夠將接收到的路由變數轉換成本地的 `map[string]string` 格式來供存取使用。
-// 如果路由中有選擇性路由，且請求網址中省略了該變數，取得到的變數結果則會是空字串而非 `nil` 值。
-func Vars(r *http.Request) map[string]string {
-	if rv := contextGet(r, varsKey); rv != nil {
-		return rv.(map[string]string)
-	}
-	return nil
-}
-
 // routes 是單個方法的所有路由。
 type routes struct {
 	// method 是這個方法的名稱。
@@ -89,6 +104,13 @@ type routes struct {
 	statics map[string]*Route
 	// dynamics 是所有的動態路由。
 	dynamics []*Route
+	//
+	caches map[string]*cacheRoute
+}
+
+type cacheRoute struct {
+	route *Route
+	vars  map[string]string
 }
 
 // Router 是路由器本體。
@@ -114,7 +136,7 @@ type Router struct {
 }
 
 // ServeFile 能夠提供某個靜態檔案，其中可以安插中介軟體，而最後一個參數必須是字串來表示檔案的相對位置。
-// 當路由器起動時，資料夾不存在於硬碟上則會發生 `ErrFileNotFound` 錯誤。
+// 當路由器起動時，檔案不存在於硬碟上則會發生 `ErrFileNotFound` 錯誤。
 func (r *Router) ServeFile(path string, handlers ...interface{}) *Route {
 	for k, v := range handlers {
 		switch t := v.(type) {
@@ -133,40 +155,51 @@ func (r *Router) ServeFile(path string, handlers ...interface{}) *Route {
 // ServeFiles 可以提供整個靜態資料夾目錄，其中可以安插中介軟體，而最後一個參數必須是字串來表示資料夾的相對位置。
 // 當路由器起動時，資料夾不存在於硬碟上則會發生 `ErrDirectoryNotFound` 錯誤。
 func (r *Router) ServeFiles(path string, handlers ...interface{}) *Route {
-
+	// 定義一個前輟路由，這樣才能接收檔案的名稱來瀏覽資料夾。
 	route := r.routeGroups[0].Get(path+"/{*:file}", handlers...)
-
+	// 遍歷傳入的處理函式，並且依照不同型態來做處置。
 	for k, v := range route.rawHandlers {
-		switch a := v.(type) {
+		switch t := v.(type) {
 		case http.Dir:
-			route.rawHandlers[k] = http.StripPrefix(path, http.FileServer(a))
+			route.rawHandlers[k] = http.StripPrefix(path, http.FileServer(t))
 		case string:
-			if info, err := os.Stat(a); err != nil || !info.IsDir() {
+			if info, err := os.Stat(t); err != nil || !info.IsDir() {
 				panic(ErrDirectoryNotFound)
 			}
-
+			// 將最終的函式改為 Davai 自己的檔案處理函式，而非 `net/http` 的 `FileServer`，
+			// 因為 `FileServer` 會依照尾斜線來作為是否是資料夾的判定，而 Davai 試圖寬容這個問題所以需要自幹檔案處理函式，可能會稍慢就是了。
 			route.rawHandlers[k] = http.StripPrefix(path, http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-
+				var isDirStatus bool
+				// checkIsDir 會檢查傳入的請求是否為資料夾型態。獨立成一個函式是為了讓他在最終才執行，
+				// 這樣也許可以提升效能來避免每次有請求就先執行資料夾檢查。
+				isDir := func() bool {
+					if isDirStatus {
+						return true
+					}
+					if info, err := os.Stat(t + req.URL.Path); err == nil && info.IsDir() {
+						isDirStatus = true
+						return true
+					}
+					return false
+				}
+				// 如果結尾沒有斜線，而且路徑又不是根目錄，且該目的地是個資料夾的話，
+				// 那麼就透過 301 重新導向到有尾斜線的路由。
 				if !strings.HasSuffix(req.URL.Path, "/") && req.URL.Path != "" {
-					if info, err := os.Stat(a + req.URL.Path); err == nil && info.IsDir() {
-						http.Redirect(w, req, path+req.URL.Path+"/", 301)
+					if isDir() {
+						http.Redirect(w, req, path+req.URL.Path+"/", http.StatusPermanentRedirect)
 						return
 					}
 				}
-
-				if info, err := os.Stat(a + req.URL.Path); err == nil && info.IsDir() {
-					if !route.DirectoryListing {
-						w.WriteHeader(http.StatusForbidden)
-						return
-					}
+				// 如果是資料夾，同時這個路由又不允許資料夾索引的話則回傳 HTTP 403 錯誤。
+				if isDir() && !route.DirectoryListing {
+					w.WriteHeader(http.StatusForbidden)
+					return
 				}
-
-				http.FileServer(http.Dir(a)).ServeHTTP(w, req)
-
+				// 其他檔案的讀取交給 FileServer 來處理。
+				http.FileServer(http.Dir(t)).ServeHTTP(w, req)
 			}))
 		}
 	}
-
 	return route
 }
 
@@ -201,23 +234,24 @@ func (r *Router) Options(path string, handlers ...interface{}) *Route {
 }
 
 // Generate 可以依照傳入的路由名稱與變數來反向產生定義好的路由，這在用於產生模板連結上非常有用。
+// 當路由中有必要的變數但卻無傳入時會發生 `ErrVarNotFound` 錯誤，如果沒有指定的命名路由則會是 `ErrRouteNotFound` 錯誤。
 func (r *Router) Generate(name string, params ...map[string]string) string {
 	v, ok := r.routeNames[name]
 	if !ok {
-		return ""
+		panic(ErrRouteNotFound)
 	}
-	//
+	// 如果沒有傳入變數的話。
 	var path string
 	if len(params) == 0 {
 		for _, part := range v.parts {
 			if part.name != "" {
-				return path
+				panic(ErrVarNotFound)
 			}
 			path += fmt.Sprintf("/%s", part.path)
 		}
 		return path
 	}
-	//
+	// 如果有傳入變數的話就依照路由片段的要求找出對應的變數值。
 	for _, part := range v.parts {
 		if part.name == "" {
 			path += fmt.Sprintf("/%s", part.path)
@@ -225,7 +259,7 @@ func (r *Router) Generate(name string, params ...map[string]string) string {
 			if v, ok := params[0][part.name]; ok {
 				path += fmt.Sprintf("/%s", v)
 			} else {
-				return path
+				panic(ErrVarNotFound)
 			}
 		}
 	}
@@ -273,11 +307,11 @@ func (r *Router) NoRoute(handlers ...interface{}) {
 // sortMiddlewares 會重新整理路由中的所有中介軟體並將其安插到每個路由的執行函式鏈中。
 func (r *Router) sortMiddlewares() {
 	for _, route := range r.routes {
-		//
+		// 先套用全域中介軟體。
 		route.middlewares = r.middlewares
-		//
+		// 接著套用路由群組的中介軟體。
 		route.middlewares = append(route.middlewares, route.routeGroup.middlewares...)
-		//
+		// 然後才是本路由的中介軟體與處理函式。
 		for _, v := range route.rawHandlers {
 			switch t := v.(type) {
 			// 中介軟體。
@@ -353,42 +387,36 @@ func (r *Router) Use(middlewares ...interface{}) *Router {
 	return r
 }
 
-// call 會呼叫指定路由的處理函式。
+// call 會呼叫指定路由的處理函式，當沒有指定的處理函式時會發生 `ErrHandlerNotFound` 錯誤。
 func (r *Router) call(route *Route, w http.ResponseWriter, req *http.Request) {
 	if route.handler == nil {
 		panic(ErrHandlerNotFound)
 	}
-
-	middlewareLength := len(route.middlewares)
-
 	var handler http.Handler
 	handler = route.handler
 
+	middlewareLength := len(route.middlewares)
 	for i := middlewareLength - 1; i >= 0; i-- {
 		handler = route.middlewares[i].Middleware(handler)
 	}
-
 	handler.ServeHTTP(w, req)
 }
 
 // callNoRoute 會串連中介軟體並且呼叫無路由的函式。
 func (r *Router) callNoRoute(w http.ResponseWriter, req *http.Request) {
-	middlewareLength := len(r.noRouteMiddlewares)
-
 	var handler http.Handler
 	handler = http.HandlerFunc(r.noRouteHandler)
 
+	middlewareLength := len(r.noRouteMiddlewares)
 	for i := middlewareLength - 1; i >= 0; i-- {
 		handler = r.noRouteMiddlewares[i].Middleware(handler)
 	}
-
 	handler.ServeHTTP(w, req)
 }
 
 // match 會逐一檢查路由並比對是否和請求網址相符。
 func (r *Router) match(routes *routes, w http.ResponseWriter, req *http.Request) bool {
-	var url string
-	url = req.URL.Path
+	url := req.URL.Path
 	if req.URL.Path != "/" {
 		url = strings.ToLower(strings.TrimRight(req.URL.Path, "/"))
 	}
@@ -396,10 +424,13 @@ func (r *Router) match(routes *routes, w http.ResponseWriter, req *http.Request)
 		r.call(route, w, req)
 		return true
 	}
+	if route, ok := routes.caches[url]; ok {
+		r.call(route.route, w, contextSet(req, varsKey, route.vars))
+		return true
+	}
 
 	components := strings.Split(url, "/")[1:]
 	componentLength := len(components)
-
 	if componentLength == 0 {
 		return false
 	}
@@ -410,7 +441,6 @@ func (r *Router) match(routes *routes, w http.ResponseWriter, req *http.Request)
 		for k, v := range route.defaultCaptureVars {
 			vars[k] = v
 		}
-		//vars := route.defaultCaptureVars
 		partLength := len(route.parts)
 
 	partScan:
@@ -446,7 +476,6 @@ func (r *Router) match(routes *routes, w http.ResponseWriter, req *http.Request)
 					if part.rule.name == "*" {
 						if isLastPart {
 							vars[part.name] = strings.Join(components[index:], "/")
-
 							matched = true
 							break partScan
 						}
@@ -462,7 +491,6 @@ func (r *Router) match(routes *routes, w http.ResponseWriter, req *http.Request)
 			if !isLastPart {
 				if component != "" {
 					nextPart := route.parts[index+1]
-
 					if nextPart.isOptional {
 						if isLastComponent {
 							matched = true
@@ -472,10 +500,8 @@ func (r *Router) match(routes *routes, w http.ResponseWriter, req *http.Request)
 					if nextPart.isRegExp {
 						if nextPart.rule.name == "*" {
 							vars[nextPart.name] = strings.Join(components[index+1:], "/")
-
 							matched = true
 							break partScan
-
 						}
 					}
 				}
@@ -489,11 +515,11 @@ func (r *Router) match(routes *routes, w http.ResponseWriter, req *http.Request)
 			}
 		}
 		if matched {
-			if vars == nil {
-				r.call(route, w, req)
-			} else {
-				r.call(route, w, contextSet(req, varsKey, vars))
+			routes.caches[url] = &cacheRoute{
+				route: route,
+				vars:  vars,
 			}
+			r.call(route, w, contextSet(req, varsKey, vars))
 			return true
 		}
 	}

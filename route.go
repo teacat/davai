@@ -110,7 +110,6 @@ func (r *Route) addPriority(priority int) {
 // tearApart 會將路由的路徑逐一拆解成片段供稍後方便使用。
 func (r *Route) tearApart() {
 	r.isStatic = true
-
 	// 將路徑以 `/` 作為分水嶺來拆開。
 	parts := strings.Split(r.path, "/")
 
@@ -124,9 +123,9 @@ func (r *Route) tearApart() {
 		if v == "" {
 			continue
 		}
-		//
+		// 路由片段數量遞增。
 		r.len++
-		//
+		// 是否為靜態路由。
 		var isStatic bool
 		// 是否為 `{}` 擷取群組。
 		var isCaptureGroup bool
@@ -137,17 +136,17 @@ func (r *Route) tearApart() {
 		} else {
 			isStatic = true
 		}
-		//
+		// 取得前後輟。
 		var prefix string
 		var suffix string
 		if isCaptureGroup {
 			left := strings.Split(v, "{")
 			right := strings.Split(v, "}")
-			//
+			// 如果擷取群組左側不是空的，那麼就取得左側內容當作前輟。
 			if left[0] != "" {
 				prefix = left[0]
 			}
-			//
+			// 如果擷取群組右側側不是空的，那麼就取得右側側內容當作後輟。
 			if right[1] != "" {
 				suffix = right[1]
 			}
@@ -183,7 +182,7 @@ func (r *Route) tearApart() {
 		if ruleName != "" {
 			rule = r.routeGroup.router.rules[ruleName]
 		}
-		//
+		// 整理此片段。
 		r.parts = append(r.parts, &part{
 			rule:           rule,
 			name:           varName,
@@ -195,39 +194,31 @@ func (r *Route) tearApart() {
 			isRegExp:       isRegExp,
 			isOptional:     isOptional,
 		})
-		//
+		// 如果這個片段有擷取群組的話就建立一個預設的空擷取群組。
 		if isCaptureGroup {
 			if r.defaultCaptureVars == nil {
 				r.defaultCaptureVars = make(map[string]string)
 			}
 			r.defaultCaptureVars[varName] = ""
 		}
-		//
 		r.addPriority(priorityPath)
-		//
 		if prefix != "" {
 			r.addPriority(priorityText)
 		}
-		//
 		if suffix != "" {
 			r.addPriority(priorityText)
 		}
-		//
 		if isCaptureGroup {
 			r.addPriority(priorityGroup)
-			//
 			if isRegExp {
 				r.addPriority(priorityRegExp)
-				//
 				if ruleName == "*" {
 					r.addPriority(priorityAnyRegExp)
 				}
 			}
-			//
 			if isOptional {
 				r.addPriority(priorityOptional)
 			}
-			//
 		} else {
 			r.addPriority(priorityStatic)
 		}

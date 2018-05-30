@@ -23,13 +23,27 @@ Davai（давай）是一個十分快速的 HTTP 路由器，這能夠讓你�
 
 # 效能比較
 
-這裡有份簡略化的效能測試報表。
+這裡有份簡略化的[效能測試報表](https://github.com/reiner/reiner-benchmark)。目前仍會持續優化並且增加快取以避免重複分析先前路由而費時。
 
 ```
 測試規格：
 1.7 GHz Intel Core i7 (4650U)
 8 GB 1600 MHz DDR3
+
+雙重擷取群組選擇： Gramework > HTTPRouter > Davai > HTTPTreeMux > Gin > Pat > Mux > Echo > Beego
+21583.24 (reqs/s) | davai, /user/yamiodymel/admin
+22005.52 (reqs/s) | gramework, /user/yamiodymel/admin
+21632.75 (reqs/s) | httprouter, /user/yamiodymel/admin
+18313.46 (reqs/s) | martini, /user/yamiodymel/admin
+19869.14 (reqs/s) | pat, /user/yamiodymel/admin
+21218.12 (reqs/s) | gin, /user/yamiodymel/admin
+19548.15 (reqs/s) | mux, /user/yamiodymel/admin
+21354.90 (reqs/s) | httptreemux, /user/yamiodymel/admin
+21005.71 (reqs/s) | echo, /user/yamiodymel/admin
+17983.01 (reqs/s) | beego, /user/yamiodymel/admin
 ```
+
+![](./assets/screenshot.png)
 
 # 索引
 
@@ -51,6 +65,7 @@ Davai（давай）是一個十分快速的 HTTP 路由器，這能夠讓你�
 		* [單個檔案](#單個檔案)
 		* [允許目錄索引](#允許目錄索引)
     * [無路由](#無路由)
+	* [良好結束](#良好結束)
 * [如何運作的？](#如何運作的？)
 
 # 安裝方式
@@ -359,6 +374,21 @@ func main() {
 	// ...
 	d.Run()
 }
+```
+
+## 良好結束
+
+Davai 支援良好結束（Graceful Shutdown），這能夠讓你不需要中斷程式就能結束並關閉 Davai 路由器的運作。
+
+```go
+	d := davai.New()
+	// ...
+	go func() {
+		<-time.After(time.Second * 30)
+		d.Shutdown(context.Background())
+	}()
+	// ...
+	d.Run()
 ```
 
 # 如何運作的？

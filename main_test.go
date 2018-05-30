@@ -1127,7 +1127,9 @@ func TestGenerateRoute(t *testing.T) {
 	})
 	assert.Equal("/one", r.Generate("One"))
 	assert.Equal("/one/two", r.Generate("Two"))
-	assert.Equal("/one/two", r.Generate("Three"))
+	assert.Panics(func() {
+		r.Generate("Three")
+	})
 	assert.Equal("/one/two/1", r.Generate("Three", map[string]string{
 		"three": "1",
 	}))
@@ -1135,14 +1137,20 @@ func TestGenerateRoute(t *testing.T) {
 		"three": "1",
 		"four":  "2",
 	}))
-	assert.Equal("/one/two", r.Generate("Five"))
-	assert.Equal("/one/two/1", r.Generate("Five", map[string]string{
-		"three": "1",
-	}))
-	assert.Equal("/one/two/1/2", r.Generate("Five", map[string]string{
-		"three": "1",
-		"four":  "2",
-	}))
+	assert.Panics(func() {
+		r.Generate("Five")
+	})
+	assert.Panics(func() {
+		r.Generate("Five", map[string]string{
+			"three": "1",
+		})
+	})
+	assert.Panics(func() {
+		r.Generate("Five", map[string]string{
+			"three": "1",
+			"four":  "2",
+		})
+	})
 	assert.Equal("/one/two/1/2/3", r.Generate("Five", map[string]string{
 		"three": "1",
 		"four":  "2",

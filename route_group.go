@@ -19,7 +19,6 @@ type RouteGroup struct {
 
 // newRoute 會在目前的路由群組中依指定的方法、路徑、處理函式來插入新的路由。
 func (r *RouteGroup) newRoute(method string, path string, handlers ...interface{}) *Route {
-	//
 	if path == "/" {
 		if r.prefix != "" {
 			path = ""
@@ -40,14 +39,12 @@ func (r *RouteGroup) newRoute(method string, path string, handlers ...interface{
 	r.routes = append(r.routes, route)
 	// 保存路由至此路由器。
 	r.router.routes = append(r.router.routes, route)
-	//
+	// 將路由依照動態和靜態保存到不同的路由樹中。
 	if route.isStatic {
-		//
 		r.router.methodRoutes[route.method].statics[route.path] = route
 	} else {
-		// 保存路由至路由器。
 		r.router.methodRoutes[route.method].dynamics = append(r.router.methodRoutes[route.method].dynamics, route)
-		// 依照優先度重新排序路由。
+		// 依照優先度重新排序動態路由。
 		r.router.sort(route.method)
 	}
 	return route
