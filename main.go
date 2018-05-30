@@ -424,10 +424,10 @@ func (r *Router) match(routes *routes, w http.ResponseWriter, req *http.Request)
 		r.call(route, w, req)
 		return true
 	}
-	if route, ok := routes.caches[url]; ok {
-		r.call(route.route, w, contextSet(req, varsKey, route.vars))
-		return true
-	}
+	//if route, ok := routes.caches[url]; ok {
+	//	r.call(route.route, w, contextSet(req, varsKey, route.vars))
+	//	return true
+	//}
 
 	components := strings.Split(url, "/")[1:]
 	componentLength := len(components)
@@ -515,10 +515,10 @@ func (r *Router) match(routes *routes, w http.ResponseWriter, req *http.Request)
 			}
 		}
 		if matched {
-			routes.caches[url] = &cacheRoute{
-				route: route,
-				vars:  vars,
-			}
+			//routes.caches[url] = &cacheRoute{
+			//	route: route,
+			//	vars:  vars,
+			//}
 			r.call(route, w, contextSet(req, varsKey, vars))
 			return true
 		}
