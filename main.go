@@ -32,16 +32,19 @@ const (
 // Vars 能夠將接收到的路由變數轉換成本地的 `map[string]string` 格式來供存取使用。
 // 如果路由中有選擇性路由，且請求網址中省略了該變數，取得到的變數結果則會是空字串而非 `nil` 值。
 func Vars(r *http.Request) map[string]string {
-	if route := contextGet(r, routeKey); route != nil {
-		if v := contextGet(r, varsKey); v != nil {
-			vars := v.(map[string]string)
-			for k := range route.(*Route).defaultCaptureVars {
-				if _, ok := vars[k]; !ok {
-					vars[k] = ""
-				}
-			}
-			return vars
-		}
+	// if route := contextGet(r, routeKey); route != nil {
+	// 	if v := contextGet(r, varsKey); v != nil {
+	// 		vars := v.(map[string]string)
+	// 		for k := range route.(*Route).defaultCaptureVars {
+	// 			if _, ok := vars[k]; !ok {
+	// 				vars[k] = ""
+	// 			}
+	// 		}
+	// 		return vars
+	// 	}
+	// }
+	if rv := contextGet(r, varsKey); rv != nil {
+		return rv.(map[string]string)
 	}
 	return nil
 }
