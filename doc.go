@@ -7,7 +7,7 @@
 //   import (
 //   	"net/http"
 //
-//   	davai "github.com/teacat/go-davai"
+//   	"github.com/teacat/davai"
 //   )
 //
 //   func main() {
