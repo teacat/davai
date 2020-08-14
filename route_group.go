@@ -44,8 +44,6 @@ func (r *RouteGroup) newRoute(method string, path string, handlers ...interface{
 		r.router.methodRoutes[route.method].statics[route.path] = route
 	} else {
 		r.router.methodRoutes[route.method].dynamics = append(r.router.methodRoutes[route.method].dynamics, route)
-		// 依照優先度重新排序動態路由。
-		r.router.sort(route.method)
 	}
 	return route
 }
