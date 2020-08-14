@@ -155,6 +155,85 @@ func TestBasicRoute(t *testing.T) {
 	<-time.After(time.Millisecond * 200)
 }
 
+func TestAddPriority(t *testing.T) {
+	assert := assert.New(t)
+	r := New()
+	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Root"))
+	})
+	r.Get("/{a}", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("a"))
+	}).AddPriority(100)
+	r.Get("/{a}/{*:b}", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("a|b"))
+	})
+	go func() {
+		err := r.Run()
+		if err != nil && err != http.ErrServerClosed {
+			assert.NoError(err)
+		}
+	}()
+	<-time.After(time.Millisecond * 200)
+	sendTestRequests(assert, []testRequest{
+		{
+			Path: "http://localhost:8080/",
+			Body: "Root",
+		},
+		{
+			Path: "http://localhost:8080/one",
+			Body: "a",
+		},
+		{
+			Path: "http://localhost:8080/one/two",
+			Body: "a|b",
+		},
+		{
+			Path: "http://localhost:8080/one/two/three",
+			Body: "a|b",
+		},
+	})
+	r.Shutdown(context.Background())
+	<-time.After(time.Millisecond * 200)
+
+	r = New()
+	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Root"))
+	})
+	r.Get("/{a}", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("a"))
+	})
+	r.Get("/{a}/{*:b}", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("a|b"))
+	})
+	go func() {
+		err := r.Run()
+		if err != nil && err != http.ErrServerClosed {
+			assert.NoError(err)
+		}
+	}()
+	<-time.After(time.Millisecond * 200)
+	sendTestRequests(assert, []testRequest{
+		{
+			Path: "http://localhost:8080/",
+			Body: "Root",
+		},
+		{
+			Path: "http://localhost:8080/one",
+			Body: "a|b",
+		},
+		{
+			Path: "http://localhost:8080/one/two",
+			Body: "a|b",
+		},
+		{
+			Path: "http://localhost:8080/one/two/three",
+			Body: "a|b",
+		},
+	})
+	r.Shutdown(context.Background())
+	<-time.After(time.Millisecond * 200)
+}
+
 func TestBasicMethodRoute(t *testing.T) {
 	assert := assert.New(t)
 	r := New()
@@ -533,6 +612,9 @@ func TestAnyRegExParamRoute(t *testing.T) {
 	r.Get("/two", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("two:" + varsToString(Vars(r))))
 	})
+	r.Get("/two/{*:three}", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("two,*|three:" + varsToString(Vars(r))))
+	})
 	r.Get("/{one}/two/{*:three}", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("*|three:" + varsToString(Vars(r))))
 	})
@@ -558,6 +640,10 @@ func TestAnyRegExParamRoute(t *testing.T) {
 		{
 			Path: "http://localhost:8080/two",
 			Body: "two:",
+		},
+		{
+			Path: "http://localhost:8080/two/three",
+			Body: "two,*|three:three",
 		},
 		{
 			Path: "http://localhost:8080/one/two/three",
