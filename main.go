@@ -349,7 +349,16 @@ func (r *Router) Run(addr ...string) error {
 		Handler: r,
 	}
 	r.sortMiddlewares()
+	r.sortRoutes()
 	return r.server.ListenAndServe()
+}
+
+// sortRoutes 會在啟動之前重新整理路由的優先度，因為路由的優先度可能會在之前透過人工干預。
+func (r *Router) sortRoutes() {
+	for _, v := range r.routes {
+		// 依照優先度重新排序動態路由。
+		v.routeGroup.router.sort(v.method)
+	}
 }
 
 // RunTLS 會依據憑證和 HTTPS 的方式開始執行路由器服務。
@@ -362,6 +371,7 @@ func (r *Router) RunTLS(addr string, certFile string, keyFile string) error {
 		Handler: r,
 	}
 	r.sortMiddlewares()
+	r.sortRoutes()
 	return r.server.ListenAndServeTLS(certFile, keyFile)
 }
 
@@ -532,19 +542,8 @@ func (r *Router) match(routes *routes, w http.ResponseWriter, req *http.Request)
 // disaptch 會解析接收到的請求並依照網址分發給指定的路由。
 func (r *Router) dispatch(w http.ResponseWriter, req *http.Request) {
 	var matched bool
-	switch req.Method {
-	case "GET":
-		matched = r.match(r.methodRoutes["GET"], w, req)
-	case "POST":
-		matched = r.match(r.methodRoutes["POST"], w, req)
-	case "PUT":
-		matched = r.match(r.methodRoutes["PUT"], w, req)
-	case "PATCH":
-		matched = r.match(r.methodRoutes["PATCH"], w, req)
-	case "DELETE":
-		matched = r.match(r.methodRoutes["DELETE"], w, req)
-	case "OPTIONS":
-		matched = r.match(r.methodRoutes["OPTIONS"], w, req)
+	if v, ok := r.methodRoutes[req.Method]; ok {
+		matched = r.match(v, w, req)
 	}
 	if !matched {
 		r.callNoRoute(w, req)
@@ -553,31 +552,7 @@ func (r *Router) dispatch(w http.ResponseWriter, req *http.Request) {
 
 // sort 會依照路由群組內路由的片段數來做重新排序，用以改進比對時的優先順序。
 func (r *Router) sort(method string) {
-	switch method {
-	case "GET":
-		sort.Slice(r.methodRoutes["GET"].dynamics, func(i, j int) bool {
-			return r.methodRoutes["GET"].dynamics[i].priority > r.methodRoutes["GET"].dynamics[j].priority
-		})
-	case "POST":
-		sort.Slice(r.methodRoutes["POST"].dynamics, func(i, j int) bool {
-			return r.methodRoutes["POST"].dynamics[i].priority > r.methodRoutes["POST"].dynamics[j].priority
-		})
-	case "PUT":
-		sort.Slice(r.methodRoutes["PUT"].dynamics, func(i, j int) bool {
-			return r.methodRoutes["PUT"].dynamics[i].priority > r.methodRoutes["PUT"].dynamics[j].priority
-		})
-	case "PATCH":
-		sort.Slice(r.methodRoutes["PATCH"].dynamics, func(i, j int) bool {
-			return r.methodRoutes["PATCH"].dynamics[i].priority > r.methodRoutes["PATCH"].dynamics[j].priority
-		})
-	case "DELETE":
-		sort.Slice(r.methodRoutes["DELETE"].dynamics, func(i, j int) bool {
-			return r.methodRoutes["DELETE"].dynamics[i].priority > r.methodRoutes["DELETE"].dynamics[j].priority
-		})
-	case "OPTIONS":
-		sort.Slice(r.methodRoutes["OPTIONS"].dynamics, func(i, j int) bool {
-			return r.methodRoutes["OPTIONS"].dynamics[i].priority > r.methodRoutes["OPTIONS"].dynamics[j].priority
-		})
-	}
-
+	sort.Slice(r.methodRoutes[method].dynamics, func(i, j int) bool {
+		return r.methodRoutes[method].dynamics[i].priority > r.methodRoutes[method].dynamics[j].priority
+	})
 }
