@@ -102,8 +102,8 @@ func (r *Route) init() *Route {
 	return r
 }
 
-// addPriority 會替此路由增加指定的優先度。
-func (r *Route) addPriority(priority int) {
+// AddPriority 會替此路由增加指定的優先度。
+func (r *Route) AddPriority(priority int) {
 	r.priority += int16(priority)
 }
 
@@ -114,7 +114,7 @@ func (r *Route) tearApart() {
 	parts := strings.Split(r.path, "/")
 
 	if r.path == "/" {
-		r.addPriority(priorityRoot)
+		r.AddPriority(priorityRoot)
 		return
 	}
 
@@ -201,26 +201,26 @@ func (r *Route) tearApart() {
 			}
 			r.defaultCaptureVars[varName] = ""
 		}
-		r.addPriority(priorityPath)
+		r.AddPriority(priorityPath)
 		if prefix != "" {
-			r.addPriority(priorityText)
+			r.AddPriority(priorityText)
 		}
 		if suffix != "" {
-			r.addPriority(priorityText)
+			r.AddPriority(priorityText)
 		}
 		if isCaptureGroup {
-			r.addPriority(priorityGroup)
+			r.AddPriority(priorityGroup)
 			if isRegExp {
-				r.addPriority(priorityRegExp)
+				r.AddPriority(priorityRegExp)
 				if ruleName == "*" {
-					r.addPriority(priorityAnyRegExp)
+					r.AddPriority(priorityAnyRegExp)
 				}
 			}
 			if isOptional {
-				r.addPriority(priorityOptional)
+				r.AddPriority(priorityOptional)
 			}
 		} else {
-			r.addPriority(priorityStatic)
+			r.AddPriority(priorityStatic)
 		}
 	}
 }
